@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zombie Shooting Gallery - v1.3.0</title>
+    <!-- Importazione di A-Frame -->
+    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #121212;
+            color: #ffffff;
+        }
+        #ui-overlay {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            border: 1px solid #444;
+        }
+        h1 {
+            font-size: 1.2rem;
+            margin: 0 0 10px 0;
+            color: #ff3366;
+        }
+        .version-badge {
+            background: #ff3366;
+            color: #fff;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        button {
+            background-color: #ff3366;
+            color: #ffffff;
+            border: none;
+            padding: 10px 18px;
+            font-weight: bold;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        button:hover {
+            background-color: #e02e5b;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- UI Overlay nel Browser con Pulsanti AR / VR e Versione -->
+    <div id="ui-overlay">
+        <h1>Zombie Gallery XR <span class="version-badge">v1.3.0</span></h1>
+        <p style="margin: 0 0 10px 0; font-size: 0.9rem; color: #aaa;">Seleziona la modalità di immersione:</p>
+        <div class="btn-group">
+            <button id="btn-vr">Entra in VR</button>
+            <button id="btn-ar">Entra in AR</button>
+        </div>
+    </div>
+
+    <!-- Scena A-Frame -->
+    <a-scene embedded vr-mode-ui="enabled: false" ar-mode-ui="enabled: false">
+        
+        <!-- Camera Rig con supporto nativo local-floor -->
+        <a-entity id="rig" position="0 0 0">
+            <a-entity id="player-camera" camera position="0 1.6 0" look-controls></a-entity>
+            <!-- Controller VR/AR con Raycaster per sparare e interagire -->
+            <a-entity id="right-controller" laser-controls="hand: right" raycaster="objects: .clickable"></a-entity>
+            <a-entity id="left-controller" laser-controls="hand: left" raycaster="objects: .clickable"></a-entity>
+        </a-entity>
+
+        <!-- Illuminazione Ambientale Cupa -->
+        <a-light type="ambient" color="#404050" intensity="0.8"></a-light>
+        <a-light type="directional" position="0 4 2" intensity="0.6" color="#ffccaa"></a-light>
+        <a-sky color="#0c0c10"></a-sky>
+
+        <!-- CABINATO / DIORAMA PRINCIPALE -->
+        <a-entity id="cabinet" position="0 1 -3">
+            <!-- Struttura del Cabinato (Cornice) -->
+            <a-box position="0 0 -0.5" width="3.2" height="2.2" depth="0.2" color="#1a1a1a" material="roughness: 0.5"></a-box>
+            
+            <!-- LOBBY: Logo del Gioco (Sostituire logo.jpg) -->
+            <a-plane id="game-logo" src="logo.jpg" position="0 0 -0.38" width="2.8" height="1.8" material="shader: flat"></a-plane>
+
+            <!-- DIORAMA: Città Distrutta (Visibile solo a gioco avviato) -->
+            <a-entity id="game-play-area" visible="false">
+                <!-- Sfondo Diorama (Rovine di palazzi) -->
+                <a-box position="-1 0.2 -0.4" width="0.8" height="1.5" depth="0.1" color="#3a3a40"></a-box>
+                <a-box position="0.8 0.4 -0.4" width="1" height="1.8" depth="0.1" color="#2f2f35"></a-box>
+                <a-box position="0 -0.5 -0.4" width="3" height="0.1" depth="0.5" color="#222225"></a-box> <!-- Pavimento diorama -->
+
+                <!-- Bersagli Meccanici (Zombie su rotaia animati) -->
+                <!-- Zombie 1 (Ciclo orizzontale) -->
+                <a-box class="clickable zombie" position="-1 -0.2 -0.2" width="0.3" height="0.6" depth="0.1" color="#55aa55"
+                       animation="property: position; from: -1.2 -0.2 -0.2; to: 1.2 -0.2 -0.2; dir: alternate; loop: true; dur: 3500">
+                </a-box>
+                <!-- Zombie 2 (Ciclo inverso) -->
+                <a-box class="clickable zombie" position="0.8 0 -0.2" width="0.25" height="0.5" depth="0.1" color="#884444"
+                       animation="property: position; from: 1 -0.1 -0.2; to: -1 -0.1 -0.2; dir: alternate; loop: true; dur: 2500">
+                </a-box>
+            </a-entity>
+        </a-entity>
+
+        <!-- HUD SPATIALE (Posizionato sulla sinistra, discostato dalla zona di gioco frontale) -->
+        <a-entity id="hud-panel" position="-1.8 1.5 -1.5" rotation="0 35 0">
+            <!-- Sfondo HUD -->
+            <a-plane width="1.2" height="1.5" color="#161b22" opacity="0.9" material="shader: flat; transparent: true"></a-plane>
+            
+            <!-- Testi e Informazioni -->
+            <a-text value="CONTROLLO HUD" position="-0.5 0.6 0.01" width="1.8" color="#ff3366"></a-text>
+            <a-text id="hud-status" value="STATO: LOBBY" position="-0.5 0.3 0.01" width="1.6" color="#ffffff"></a-text>
+            <a-text id="hud-score" value="PUNTI: 0" position="-0.5 0.1 0.01" width="1.6" color="#00ffcc"></a-text>
+            <a-text value="Versione: v1.3.0" position="-0.5 -0.1 0.01" width="1.4" color="#888888"></a-text>
+
+            <!-- Pulsante Interattivo Start / Lobby -->
+            <a-box id="action-btn" class="clickable" position="0 -0.45 0.02" width="0.9" height="0.3" depth="0.05" color="#ff3366">
+                <a-text id="action-btn-text" value="AVVIA GIOCO" position="-0.32 0 0.04" width="1.8" color="#ffffff"></a-text>
+            </a-box>
+        </a-entity>
+
+    </a-scene>
+
+    <!-- Script di Logica di Gioco -->
+    <script>
+        const sceneEl = document.querySelector('a-scene');
+        const btnVr = document.getElementById('btn-vr');
+        const btnAr = document.getElementById('btn-ar');
+        
+        const gameLogo = document.getElementById('game-logo');
+        const gamePlayArea = document.getElementById('game-play-area');
+        const hudStatus = document.getElementById('hud-status');
+        const hudScore = document.getElementById('hud-score');
+        const actionBtn = document.getElementById('action-btn');
+        const actionBtnText = document.getElementById('action-btn-text');
+        const zombies = document.querySelectorAll('.zombie');
+
+        let isGameStarted = false;
+        let score = 0;
+
+        // Gestione pulsanti browser per avvio AR/VR
+        btnVr.addEventListener('click', () => { if (sceneEl.hasLoaded) sceneEl.enterVR(); });
+        btnAr.addEventListener('click', () => { if (sceneEl.hasLoaded) sceneEl.enterAR(); });
+
+        // Logica di transizione Lobby <-> Gioco tramite HUD spaziale
+        actionBtn.addEventListener('click', () => {
+            isGameStarted = !isGameStarted;
+
+            if (isGameStarted) {
+                gameLogo.setAttribute('visible', 'false');
+                gamePlayArea.setAttribute('visible', 'true');
+                hudStatus.setAttribute('value', 'STATO: IN GIOCO');
+                actionBtn.setAttribute('color', '#333333');
+                actionBtnText.setAttribute('value', 'TORNA LOBBY');
+                score = 0;
+                hudScore.setAttribute('value', `PUNTI: ${score}`);
+                console.log("[Game] Cabinato attivato: Inizia la caccia agli zombie.");
+            } else {
+                gameLogo.setAttribute('visible', 'true');
+                gamePlayArea.setAttribute('visible', 'false');
+                hudStatus.setAttribute('value', 'STATO: LOBBY');
+                actionBtn.setAttribute('color', '#ff3366');
+                actionBtnText.setAttribute('value', 'AVVIA GIOCO');
+                console.log("[Game] Rientrato in Lobby.");
+            }
+        });
+
+        // Meccanica di sparo sui bersagli zombie
+        zombies.forEach(zombie => {
+            zombie.addEventListener('click', (evt) => {
+                if (!isGameStarted) return;
+                
+                score += 100;
+                hudScore.setAttribute('value', `PUNTI: ${score}`);
+                
+                // Feedback visivo temporaneo (es. lampeggio o cambio colore)
+                const originalColor = zombie.getAttribute('color');
+                zombie.setAttribute('color', '#ffffff');
+                setTimeout(() => {
+                    zombie.setAttribute('color', originalColor);
+                }, 150);
+
+                console.p_log ? null : console.log("[Game] Zombie colpito! Punti attuali:", score);
+            });
+        });
+    </script>
+</body>
+</html>
