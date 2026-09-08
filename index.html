@@ -3,268 +3,355 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-  <meta http-equiv="Pragma" content="no-cache">
-  <meta http-equiv="Expires" content="0">
-
-  <meta name="game-version" content="0.4.0">
-  <title>WebXR 60s Zombie Arcade - Vintage Lighting v0.4.0</title>
-
-  <!-- A-Frame v1.6.0 -->
-  <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
-
+  <title>Tiro a Segno VR - Cabinato & Beretta</title>
   <style>
     body {
       margin: 0;
+      padding: 0;
       overflow: hidden;
+      background-color: #000;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background-color: #000000;
+      user-select: none;
     }
-
-    #version-overlay {
+    #ui-container {
       position: absolute;
-      top: 16px;
-      left: 16px;
-      z-index: 9999;
-      background: rgba(0, 0, 0, 0.85);
+      top: 20px;
+      left: 20px;
       color: #00ffcc;
-      padding: 8px 14px;
-      border-radius: 6px;
+      font-size: 24px;
       font-weight: bold;
-      font-size: 14px;
-      border: 1px solid rgba(0, 255, 204, 0.4);
+      text-shadow: 0 0 10px rgba(0, 255, 204, 0.7);
       pointer-events: none;
+      z-index: 10;
     }
-
-    #xr-controls {
+    #crosshair {
       position: absolute;
-      bottom: 24px;
+      top: 50%;
       left: 50%;
-      transform: translateX(-50%);
-      z-index: 9999;
-      display: flex;
-      gap: 12px;
-    }
-
-    .xr-button {
-      background: #111827;
-      color: #ffffff;
-      border: 2px solid #3b82f6;
-      padding: 12px 24px;
-      font-size: 16px;
-      font-weight: 600;
-      border-radius: 8px;
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
-
-    .xr-button:hover {
-      background: #3b82f6;
-      color: #ffffff;
-      box-shadow: 0 0 12px rgba(59, 130, 246, 0.5);
+      width: 12px;
+      height: 12px;
+      border: 2px solid #00ffcc;
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      z-index: 10;
     }
   </style>
 
-  <script>
-    // Componente per la gestione delle 3 luci spot instabili a bianco caldo
-    AFRAME.registerComponent('vintage-cabinet-lights', {
-      init: function () {
-        const scene = this.el.sceneEl.object3D;
-        const WARM_WHITE = 0xfff1e0;
-
-        // 1. Target Posizionali
-        this.targetRightFront = new THREE.Object3D();
-        this.targetRightFront.position.set(0.5, 0.8, -1.8);
-        scene.add(this.targetRightFront);
-
-        this.targetLeftFront = new THREE.Object3D();
-        this.targetLeftFront.position.set(-0.5, 0.8, -1.8);
-        scene.add(this.targetLeftFront);
-
-        this.targetBackground = new THREE.Object3D();
-        this.targetBackground.position.set(0.0, 1.0, -2.6);
-        scene.add(this.targetBackground);
-
-        // 2. Creazione SpotLight 1: Alto Sinistra Davanti -> Punta a Davanti Destra
-        this.spot1 = new THREE.SpotLight(WARM_WHITE, 3.5, 10, Math.PI / 4, 0.4);
-        this.spot1.position.set(-0.7, 2.2, -1.1);
-        this.spot1.target = this.targetRightFront;
-        this.spot1.castShadow = true;
-        scene.add(this.spot1);
-
-        // 3. Creazione SpotLight 2: Alto Destra Davanti -> Punta a Davanti Sinistra
-        this.spot2 = new THREE.SpotLight(WARM_WHITE, 3.5, 10, Math.PI / 4, 0.4);
-        this.spot2.position.set(0.7, 2.2, -1.1);
-        this.spot2.target = this.targetLeftFront;
-        this.spot2.castShadow = true;
-        scene.add(this.spot2);
-
-        // 4. Creazione SpotLight 3: Centrale -> Punta allo Sfondo
-        this.spot3 = new THREE.SpotLight(WARM_WHITE, 4.5, 12, Math.PI / 3, 0.5);
-        this.spot3.position.set(0.0, 2.2, -1.4);
-        this.spot3.target = this.targetBackground;
-        this.spot3.castShadow = true;
-        scene.add(this.spot3);
-
-        this.baseIntensities = { spot1: 3.5, spot2: 3.5, spot3: 4.5 };
-      },
-
-      tick: function (time) {
-        const t = time * 0.001;
-
-        // Helper per simulare sfarfallio elettrico instabile
-        const getUnstableFlicker = (baseIntensity, timeOffset) => {
-          const fastOscillation = Math.sin(t * 18 + timeOffset) * 0.2;
-          const noise = (Math.random() - 0.5) * 0.35;
-          const microDrop = Math.random() < 0.06 ? 0.15 : 1.0; // Calo di tensione improvviso nel 6% dei frame
-          
-          return Math.max(0, (baseIntensity + fastOscillation + noise) * microDrop);
-        };
-
-        if (this.spot1) this.spot1.intensity = getUnstableFlicker(this.baseIntensities.spot1, 0.0);
-        if (this.spot2) this.spot2.intensity = getUnstableFlicker(this.baseIntensities.spot2, 3.14);
-        if (this.spot3) this.spot3.intensity = getUnstableFlicker(this.baseIntensities.spot3, 1.57);
+  <!-- Import Map per Three.js e moduli ufficiali -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
       }
-    });
-
-    // Componente Canna/Pistola per la gestione dello Sparo
-    AFRAME.registerComponent('gun-shooter', {
-      init: function () {
-        this.el.addEventListener('triggerdown', this.shoot.bind(this));
-        window.addEventListener('click', this.shoot.bind(this));
-      },
-
-      shoot: function () {
-        const berettaModel = document.getElementById('beretta-model');
-        if (berettaModel) {
-          berettaModel.setAttribute('position', '0 -0.03 -0.02');
-          setTimeout(() => berettaModel.setAttribute('position', '0 -0.03 -0.05'), 80);
-        }
-      }
-    });
+    }
   </script>
 </head>
 <body>
 
-  <div id="version-overlay">
-    CABINATO ZOMBIE 1960s - <span id="version-text">v0.4.0</span>
-  </div>
+  <div id="ui-container">PUNTI: <span id="score">0</span></div>
+  <div id="crosshair"></div>
 
-  <div id="xr-controls">
-    <button id="btn-enter-vr" class="xr-button">AVVIA VR</button>
-    <button id="btn-enter-ar" class="xr-button">AVVIA AR</button>
-  </div>
+  <script type="module">
+    import * as THREE from 'three';
+    import { VRButton } from 'three/addons/webxr/VRButton.js';
+    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
-  <a-scene 
-    embedded 
-    background="transparent: true"
-    webxr="referenceSpaceType: local-floor; requiredFeatures: local-floor; optionalFeatures: hit-test, dom-overlay; overlayElement: #version-overlay"
-    vr-mode-ui="enabled: false"
-    vintage-cabinet-lights>
+    class ShootingGame {
+      constructor() {
+        this.score = 0;
+        this.targets = [];
+        this.berettaModel = null;
+        this.rightGrip = null;
+        this.rightController = null;
 
-    <a-assets>
-      <a-asset-item id="cabinato-glb" src="Cabinato.glb?v=0.4.0"></a-asset-item>
-      <a-asset-item id="beretta-glb" src="Beretta.glb?v=0.4.0"></a-asset-item>
-    </a-assets>
+        this.initAudio();
+        this.initScene();
+        this.initXR();
+        this.loadCabinato();
+        this.initTargets();
+        this.initEvents();
 
-    <!-- RIG GIOCATORE -->
-    <a-entity id="rig" position="0 0 0">
-      <a-camera id="main-camera" position="0 1.6 0" look-controls>
-        <a-cursor id="gaze-cursor" raycaster="objects: .clickable" color="#00ffcc" scale="0.5 0.5 0.5"></a-cursor>
-      </a-camera>
+        this.renderer.setAnimationLoop(this.render.bind(this));
+      }
 
-      <!-- Controller Sinistro -->
-      <a-entity id="left-controller" laser-controls="hand: left; model: true" raycaster="objects: .clickable; far: 5"></a-entity>
+      // --- SINTETIZZATORE AUDIO (Sparo + Impatto) ---
+      initAudio() {
+        this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
 
-      <!-- Controller Destro con Arma -->
-      <a-entity id="right-controller" laser-controls="hand: right; model: false" gun-shooter>
-        <a-entity id="beretta-model" 
-                  gltf-model="#beretta-glb" 
-                  position="0 -0.03 -0.05" 
-                  rotation="-75 -10 2" 
-                  scale="1 1 1">
-          <a-entity id="gun-laser" 
-                    raycaster="objects: .clickable; far: 12; showLine: true; origin: 0 0 0; direction: 0 0 -1" 
-                    line="color: #ff0000; opacity: 0.85">
-          </a-entity>
-        </a-entity>
-      </a-entity>
-    </a-entity>
+      playShootSound() {
+        if (!this.audioCtx) return;
+        if (this.audioCtx.state === 'suspended') this.audioCtx.resume();
 
-    <!-- PANNELLO HUD 3D (Sinistra) -->
-    <a-entity id="hud-debug-panel" position="-1.4 1.35 -1.1" rotation="0 35 0">
-      <a-plane width="1.1" height="1.0" color="#0f172a" material="opacity: 0.92; transparent: true; shader: flat"></a-plane>
-      
-      <a-text value="INFO AMBIENTE" position="-0.48 0.38 0.01" scale="0.32 0.32 0.32" color="#38bdf8" font="monoid"></a-text>
-      
-      <a-text value="ILLUMINAZIONE VINTAGE:\n- Spot Sinistra -> Front Right\n- Spot Destra -> Front Left\n- Spot Centro -> Sfondo" position="-0.48 0.15 0.01" scale="0.19 0.19 0.19" color="#00ffcc"></a-text>
+        const osc = this.audioCtx.createOscillator();
+        const gain = this.audioCtx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(400, this.audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(40, this.audioCtx.currentTime + 0.15);
 
-      <a-box id="btn-hud-toggle" class="clickable" position="0 -0.15 0.03" width="0.85" height="0.12" depth="0.02" color="#0d9488">
-        <a-text value="TOGGLE PAVIMENTO" align="center" position="0 0 0.02" scale="0.18 0.18 0.18" color="#ffffff"></a-text>
-      </a-box>
+        gain.gain.setValueAtTime(0.3, this.audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.audioCtx.currentTime + 0.15);
 
-      <a-text id="hud-telemetry" value="Sessione: Standby | Modo: Desktop 2D" position="-0.48 -0.35 0.01" scale="0.18 0.18 0.18" color="#94a3b8"></a-text>
-    </a-entity>
+        osc.connect(gain);
+        gain.connect(this.audioCtx.destination);
 
-    <!-- SCENA CENTRALE -->
-    <a-entity id="scene-center" position="0 0 0">
-      <a-grid id="floor-grid" position="0 0 0" width="8" height="8" color-center="#38bdf8" color-grid="#1e293b"></a-grid>
-      
-      <!-- CABINATO ARCADE -->
-      <a-entity id="arcade-cabinet" 
-                gltf-model="#cabinato-glb" 
-                position="0 0 -1.8" 
-                rotation="0 0 0" 
-                scale="1 1 1">
-      </a-entity>
-    </a-entity>
+        osc.start();
+        osc.stop(this.audioCtx.currentTime + 0.15);
+      }
 
-    <!-- Luce Ambientale Soft per non scurire troppo le ombre aperte -->
-    <a-light type="ambient" color="#111827" intensity="0.6"></a-light>
+      playHitSound() {
+        if (!this.audioCtx) return;
+        const osc = this.audioCtx.createOscillator();
+        const gain = this.audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(800, this.audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(1200, this.audioCtx.currentTime + 0.1);
 
-  </a-scene>
+        gain.gain.setValueAtTime(0.4, this.audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.audioCtx.currentTime + 0.1);
 
-  <script>
-    document.addEventListener("DOMContentLoaded", () => {
-      const sceneEl = document.querySelector("a-scene");
-      const btnVR = document.getElementById("btn-enter-vr");
-      const btnAR = document.getElementById("btn-enter-ar");
-      const hudTelemetry = document.getElementById("hud-telemetry");
-      const floorGrid = document.getElementById("floor-grid");
-      const btnHudToggle = document.getElementById("btn-hud-toggle");
-      const gazeCursor = document.getElementById("gaze-cursor");
+        osc.connect(gain);
+        gain.connect(this.audioCtx.destination);
 
-      btnVR.addEventListener("click", () => sceneEl.enterVR());
+        osc.start();
+        osc.stop(this.audioCtx.currentTime + 0.1);
+      }
 
-      btnAR.addEventListener("click", () => {
-        if (typeof sceneEl.enterAR === "function") {
-          sceneEl.enterAR();
-        } else {
-          sceneEl.setAttribute("webxr", "optionalFeatures: hit-test, dom-overlay, local-floor");
-          sceneEl.enterVR();
+      // --- INIZIALIZZAZIONE SCENA THREE.JS ---
+      initScene() {
+        this.scene = new THREE.Scene();
+        this.scene.background = new THREE.Color(0x111118);
+
+        this.camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
+        this.camera.position.set(0, 1.2, 1.2);
+
+        this.renderer = new THREE.WebGLRenderer({ antialias: true });
+        this.renderer.setSize(window.innerWidth, window.innerHeight);
+        this.renderer.pixelRatio = window.devicePixelRatio;
+        this.renderer.shadowMap.enabled = true;
+        this.renderer.xr.enabled = true;
+        document.body.appendChild(this.renderer.domElement);
+
+        document.body.appendChild(VRButton.createButton(this.renderer));
+
+        // Luce d'ambiente leggera
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.2);
+        this.scene.add(ambientLight);
+
+        this.raycaster = new THREE.Raycaster();
+      }
+
+      // --- CARICAMENTO CABINATO E LUCI LOCALI ---
+      loadCabinato() {
+        const loader = new GLTFLoader();
+
+        loader.load(
+          'Cabinato.glb',
+          (gltf) => {
+            this.cabinato = gltf.scene;
+            this.scene.add(this.cabinato);
+            this.setupCabinatoLights(this.cabinato);
+          },
+          undefined,
+          (err) => {
+            console.warn('Cabinato.glb non trovato, creo struttura di supporto integrata.');
+            this.cabinato = this.createFallbackCabinato();
+            this.scene.add(this.cabinato);
+            this.setupCabinatoLights(this.cabinato);
+          }
+        );
+      }
+
+      setupCabinatoLights(cabinato) {
+        // 1. TARGET DELLE LUCI
+        this.targetRightFront = new THREE.Object3D();
+        this.targetRightFront.position.set(0.2, 0.9, 0.0);
+        cabinato.add(this.targetRightFront);
+
+        this.targetLeftFront = new THREE.Object3D();
+        this.targetLeftFront.position.set(-0.2, 0.9, 0.0);
+        cabinato.add(this.targetLeftFront);
+
+        this.targetBackground = new THREE.Object3D();
+        this.targetBackground.position.set(0.0, 0.0, 0.0);
+        cabinato.add(this.targetBackground);
+
+        // 2. FARETTI SPOT
+        this.spot1 = new THREE.SpotLight(0xffffff, 3.0, 5, Math.PI / 5, 0.2);
+        this.spot1.position.set(-0.45, 1.9, -1.1);
+        this.spot1.target = this.targetRightFront;
+        cabinato.add(this.spot1);
+
+        this.spot2 = new THREE.SpotLight(0xffffff, 3.0, 5, Math.PI / 5, 0.2);
+        this.spot2.position.set(0.45, 1.9, 0.45);
+        this.spot2.target = this.targetLeftFront;
+        cabinato.add(this.spot2);
+
+        this.spot3 = new THREE.SpotLight(0xffffff, 3.0, 5, Math.PI / 4, 0.2);
+        this.spot3.position.set(0.0, 1.9, 0.0);
+        this.spot3.target = this.targetBackground;
+        cabinato.add(this.spot3);
+      }
+
+      createFallbackCabinato() {
+        const group = new THREE.Group();
+        const boxGeo = new THREE.BoxGeometry(1.2, 2.2, 1.2);
+        const boxMat = new THREE.MeshStandardMaterial({ color: 0x222222, wireframe: true });
+        const box = new THREE.Mesh(boxGeo, boxMat);
+        box.position.set(0, 1.1, -0.5);
+        group.add(box);
+        return group;
+      }
+
+      // --- CONFIGURAZIONE VR & AGGANCIO BERETTA.GLB ---
+      initXR() {
+        const gltfLoader = new GLTFLoader();
+
+        // Configurazione Controller 0 e 1
+        for (let i = 0; i < 2; i++) {
+          const controller = this.renderer.xr.getController(i);
+          const grip = this.renderer.xr.getControllerGrip(i);
+          this.scene.add(controller);
+          this.scene.add(grip);
+
+          controller.addEventListener('selectstart', () => this.onTriggerShoot(controller));
+
+          grip.addEventListener('connected', (event) => {
+            const handedness = event.data.handedness;
+
+            // Se è il controller DESTRO, cariciamo Beretta.glb
+            if (handedness === 'right') {
+              this.rightGrip = grip;
+              this.rightController = controller;
+
+              gltfLoader.load(
+                'Beretta.glb',
+                (gltf) => {
+                  this.berettaModel = gltf.scene;
+                  // Aggiustamenti opzionali di offset/rotazione per farla combaciare con l'impugnatura
+                  this.berettaModel.rotation.x = -Math.PI / 4;
+                  this.berettaModel.position.set(0, 0, -0.05);
+                  grip.add(this.berettaModel);
+                },
+                undefined,
+                (err) => {
+                  console.warn('Beretta.glb non trovata. Uso modello procedurale per la mano destra.');
+                  const fallbackPistol = this.createFallbackPistol();
+                  grip.add(fallbackPistol);
+                }
+              );
+            }
+          });
         }
-      });
+      }
 
-      sceneEl.addEventListener("enter-vr", () => {
-        const isAR = sceneEl.is("ar-mode");
-        const modeText = isAR ? "AR Passthrough" : "VR Immersiva";
-        hudTelemetry.setAttribute("value", `Sessione: Attiva | ${modeText}`);
-        if (gazeCursor) gazeCursor.setAttribute("visible", "false");
-        if (isAR) floorGrid.setAttribute("visible", "false");
-      });
+      createFallbackPistol() {
+        const gunGroup = new THREE.Group();
+        const barrelGeo = new THREE.CylinderGeometry(0.015, 0.015, 0.2);
+        const gunMat = new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.8, roughness: 0.2 });
+        const barrel = new THREE.Mesh(barrelGeo, gunMat);
+        barrel.rotation.x = Math.PI / 2;
+        barrel.position.set(0, 0, -0.1);
 
-      sceneEl.addEventListener("exit-vr", () => {
-        hudTelemetry.setAttribute("value", "Sessione: Inattiva | Modo: Desktop 2D");
-        floorGrid.setAttribute("visible", "true");
-        if (gazeCursor) gazeCursor.setAttribute("visible", "true");
-      });
+        const handleGeo = new THREE.BoxGeometry(0.03, 0.1, 0.04);
+        const handle = new THREE.Mesh(handleGeo, gunMat);
+        handle.position.set(0, -0.04, -0.02);
+        handle.rotation.x = Math.PI / 6;
 
-      btnHudToggle.addEventListener("click", () => {
-        const isVisible = floorGrid.getAttribute("visible") !== "false";
-        floorGrid.setAttribute("visible", (!isVisible).toString());
-      });
-    });
+        gunGroup.add(barrel);
+        gunGroup.add(handle);
+        return gunGroup;
+      }
+
+      // --- BERSAGLI DI TIRO A SEGNO ---
+      initTargets() {
+        const colors = [0xff0055, 0x00ffcc, 0xffcc00, 0xaa00ff];
+
+        for (let i = 0; i < 5; i++) {
+          const geo = new THREE.CylinderGeometry(0.12, 0.12, 0.02, 32);
+          geo.rotateX(Math.PI / 2);
+          const mat = new THREE.MeshStandardMaterial({ color: colors[i % colors.length] });
+          const target = new THREE.Mesh(geo, mat);
+
+          this.resetTargetPosition(target);
+          target.userData = { speed: 0.005 + Math.random() * 0.01, dir: Math.random() > 0.5 ? 1 : -1 };
+
+          this.targets.push(target);
+          this.scene.add(target);
+        }
+      }
+
+      resetTargetPosition(target) {
+        target.position.x = (Math.random() - 0.5) * 0.8;
+        target.position.y = 0.8 + Math.random() * 0.6;
+        target.position.z = -0.3 + (Math.random() - 0.5) * 0.4;
+      }
+
+      // --- LOGICA SPARO & INTERAZIONE ---
+      initEvents() {
+        window.addEventListener('resize', () => {
+          this.camera.aspect = window.innerWidth / window.innerHeight;
+          this.camera.updateProjectionMatrix();
+          this.renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Sparo tramite Mouse (PC/Desktop Test)
+        window.addEventListener('click', () => {
+          if (!this.renderer.xr.isPresenting) {
+            this.raycaster.setFromCamera(new THREE.Vector2(0, 0), this.camera);
+            this.executeShoot(this.raycaster);
+          }
+        });
+      }
+
+      onTriggerShoot(controller) {
+        // Calcola il raggio lungo la direzione del controller VR (dalla Beretta)
+        const tempMatrix = new THREE.Matrix4();
+        tempMatrix.identity().extractRotation(controller.matrixWorld);
+
+        this.raycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
+        this.raycaster.ray.direction.set(0, 0, -1).applyMatrix4(tempMatrix);
+
+        this.executeShoot(this.raycaster);
+      }
+
+      executeShoot(raycaster) {
+        this.playShootSound();
+
+        const hits = raycaster.intersectObjects(this.targets);
+        if (hits.length > 0) {
+          const hitTarget = hits[0].object;
+          this.playHitSound();
+          this.score += 10;
+          document.getElementById('score').innerText = this.score;
+
+          // Effetto visivo scala ridotta all'impatto e riposizionamento
+          hitTarget.scale.set(1.2, 1.2, 1.2);
+          setTimeout(() => {
+            hitTarget.scale.set(1, 1, 1);
+            this.resetTargetPosition(hitTarget);
+          }, 150);
+        }
+      }
+
+      // --- LOOP DI RENDERING ---
+      render() {
+        // Movimento continuo dei bersagli
+        this.targets.forEach((target) => {
+          target.position.x += target.userData.speed * target.userData.dir;
+          if (target.position.x > 0.4 || target.position.x < -0.4) {
+            target.userData.dir *= -1;
+          }
+        });
+
+        this.renderer.render(this.scene, this.camera);
+      }
+    }
+
+    // Avvio del gioco
+    new ShootingGame();
   </script>
 </body>
 </html>
