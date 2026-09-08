@@ -10,8 +10,8 @@
   <meta http-equiv="Expires" content="0">
 
   <!-- Versione Gioco nei Meta Dati -->
-  <meta name="game-version" content="0.2.2">
-  <title>WebXR 60s Zombie Arcade - v0.2.2</title>
+  <meta name="game-version" content="0.2.4">
+  <title>WebXR 60s Zombie Arcade - v0.2.4</title>
 
   <!-- A-Frame v1.6.0 -->
   <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
@@ -24,13 +24,12 @@
       background-color: #000000;
     }
 
-    /* Badge Versione 2D Overlay */
     #version-overlay {
       position: absolute;
       top: 16px;
       left: 16px;
       z-index: 9999;
-      background: rgba(0, 0, 0, 0.8);
+      background: rgba(0, 0, 0, 0.85);
       color: #00ffcc;
       padding: 8px 14px;
       border-radius: 6px;
@@ -40,7 +39,6 @@
       pointer-events: none;
     }
 
-    /* Controller Pulsanti WebXR 2D */
     #xr-controls {
       position: absolute;
       bottom: 24px;
@@ -72,90 +70,105 @@
 </head>
 <body>
 
-  <!-- Overlay Versione Visibile a Schermo -->
   <div id="version-overlay">
-    CABINATO ZOMBIE 1960s - <span id="version-text">v0.2.2</span>
+    CABINATO ZOMBIE 1960s - <span id="version-text">v0.2.4</span>
   </div>
 
-  <!-- Pulsanti 2D per attivazione VR / AR -->
   <div id="xr-controls">
     <button id="btn-enter-vr" class="xr-button">AVVIA VR</button>
     <button id="btn-enter-ar" class="xr-button">AVVIA AR</button>
   </div>
 
-  <!-- Scena 3D WebXR -->
   <a-scene 
     embedded 
     background="transparent: true"
     webxr="referenceSpaceType: local-floor; requiredFeatures: local-floor; optionalFeatures: hit-test, dom-overlay; overlayElement: #version-overlay"
     vr-mode-ui="enabled: false">
 
-    <!-- Asset GLB con Cache-Busting via Query String -->
     <a-assets>
-      <a-asset-item id="cabinato-glb" src="Cabinato.glb?v=0.2.2"></a-asset-item>
-      <a-asset-item id="beretta-glb" src="Beretta.glb?v=0.2.2"></a-asset-item>
+      <a-asset-item id="cabinato-glb" src="Cabinato.glb?v=0.2.4"></a-asset-item>
+      <a-asset-item id="beretta-glb" src="Beretta.glb?v=0.2.4"></a-asset-item>
     </a-assets>
 
-    <!-- Rig Giocatore ancorato al pavimento (Y=0) -->
     <a-entity id="rig" position="0 0 0">
       <a-camera id="main-camera" position="0 1.6 0" look-controls>
-        <a-cursor raycaster="objects: .clickable" color="#00ffcc" scale="0.5 0.5 0.5"></a-cursor>
+        <a-cursor id="gaze-cursor" raycaster="objects: .clickable" color="#00ffcc" scale="0.5 0.5 0.5"></a-cursor>
       </a-camera>
 
-      <!-- Controller Sinistro (Interazione HUD) -->
       <a-entity id="left-controller" laser-controls="hand: left" raycaster="objects: .clickable; far: 5"></a-entity>
 
-      <!-- Controller Destro (Arma + Raggio Laser) -->
       <a-entity id="right-controller" laser-controls="hand: right" raycaster="objects: .clickable, .target; far: 10; showLine: true" line="color: #ff0000; opacity: 0.85">
-        <!-- Pivot per l'Allineamento dell'Arma e del Raggio -->
         <a-entity id="gun-alignment-pivot" position="0 0 0" rotation="0 0 0">
+          <!-- Modello Beretta regolabile in tempo reale -->
           <a-entity id="beretta-model" 
                     gltf-model="#beretta-glb" 
-                    position="0 -0 0" 
-                    rotation="-90 -90 90" 
+                    position="0 -0.03 -0.05" 
+                    rotation="-10 0 0" 
                     scale="1 1 1">
           </a-entity>
         </a-entity>
       </a-entity>
     </a-entity>
 
-    <!-- 3D HUD (Debug e Calibrazione Mirino - Posizionato a Sinistra) -->
-    <a-entity id="hud-debug-panel" position="-1.4 1.3 -1.1" rotation="0 35 0">
-      <a-plane width="1.2" height="1.5" color="#0f172a" material="opacity: 0.9; transparent: true; shader: flat"></a-plane>
+    <!-- 3D HUD DI DEBUG & CALIBRAZIONE IMPUGNATURA (Sinistra) -->
+    <a-entity id="hud-debug-panel" position="-1.4 1.35 -1.1" rotation="0 35 0">
+      <a-plane width="1.3" height="1.75" color="#0f172a" material="opacity: 0.92; transparent: true; shader: flat"></a-plane>
       
-      <a-text value="CONTROLLO CABINATO" position="-0.52 0.6 0.01" scale="0.35 0.35 0.35" color="#38bdf8" font="monoid"></a-text>
-      <a-text value="VER: v0.2.2" position="-0.52 0.5 0.01" scale="0.25 0.25 0.25" color="#94a3b8"></a-text>
+      <a-text value="CALIBRAZIONE IMPUGNATURA" position="-0.58 0.75 0.01" scale="0.32 0.32 0.32" color="#38bdf8" font="monoid"></a-text>
+      <a-text value="VER: v0.2.4" position="-0.58 0.67 0.01" scale="0.22 0.22 0.22" color="#94a3b8"></a-text>
 
-      <!-- Telemetria Stato -->
-      <a-text id="hud-telemetry" value="Sessione: Standby\nModo: Desktop 2D\nFloor Sync: local-floor (Y=0)" position="-0.52 0.25 0.01" scale="0.2 0.2 0.2" color="#ffffff"></a-text>
+      <!-- Lettura Offsets Attuali -->
+      <a-text id="hud-pos-readout" value="POS: X:0.000 Y:-0.030 Z:-0.050" position="-0.58 0.52 0.01" scale="0.22 0.22 0.22" color="#00ffcc"></a-text>
+      <a-text id="hud-rot-readout" value="ROT: P:-10° Y:0° R:0°" position="-0.58 0.44 0.01" scale="0.22 0.22 0.22" color="#00ffcc"></a-text>
 
-      <!-- SEZIONE CALIBRAZIONE RAGGIO / MIRINO -->
-      <a-text value="REGOLAZIONE MIRINO (PITCH):" position="-0.52 -0.02 0.01" scale="0.2 0.2 0.2" color="#f59e0b"></a-text>
-      <a-text id="hud-pitch-value" value="Inclinazione: 0.0°" position="-0.52 -0.1 0.01" scale="0.25 0.25 0.25" color="#00ffcc"></a-text>
+      <!-- SEZIONE 1: POSIZIONE (X, Y, Z) -->
+      <a-text value="TRASLAZIONE (PASSO 0.5cm):" position="-0.58 0.32 0.01" scale="0.2 0.2 0.2" color="#f59e0b"></a-text>
+      
+      <!-- Asse X -->
+      <a-text value="ASSE X:" position="-0.58 0.22 0.01" scale="0.2 0.2 0.2" color="#ffffff"></a-text>
+      <a-box id="btn-px-plus" class="clickable" position="-0.22 0.22 0.03" width="0.22" height="0.09" depth="0.02" color="#2563eb"><a-text value="X +" align="center" position="0 0 0.02" scale="0.18 0.18 0.18" color="#fff"></a-text></a-box>
+      <a-box id="btn-px-minus" class="clickable" position="0.05 0.22 0.03" width="0.22" height="0.09" depth="0.02" color="#2563eb"><a-text value="X -" align="center" position="0 0 0.02" scale="0.18 0.18 0.18" color="#fff"></a-text></a-box>
 
-      <!-- Pulsanti Calibrazione -->
-      <a-box id="btn-pitch-up" class="clickable" position="-0.28 -0.26 0.03" width="0.4" height="0.12" depth="0.02" color="#2563eb">
-        <a-text value="INCLINA +" align="center" position="0 0 0.02" scale="0.2 0.2 0.2" color="#ffffff"></a-text>
+      <!-- Asse Y (Altezza) -->
+      <a-text value="ASSE Y:" position="-0.58 0.10 0.01" scale="0.2 0.2 0.2" color="#ffffff"></a-text>
+      <a-box id="btn-py-plus" class="clickable" position="-0.22 0.10 0.03" width="0.22" height="0.09" depth="0.02" color="#2563eb"><a-text value="Y +" align="center" position="0 0 0.02" scale="0.18 0.18 0.18" color="#fff"></a-text></a-box>
+      <a-box id="btn-py-minus" class="clickable" position="0.05 0.10 0.03" width="0.22" height="0.09" depth="0.02" color="#2563eb"><a-text value="Y -" align="center" position="0 0 0.02" scale="0.18 0.18 0.18" color="#fff"></a-text></a-box>
+
+      <!-- Asse Z (Profondità) -->
+      <a-text value="ASSE Z:" position="-0.58 -0.02 0.01" scale="0.2 0.2 0.2" color="#ffffff"></a-text>
+      <a-box id="btn-pz-plus" class="clickable" position="-0.22 -0.02 0.03" width="0.22" height="0.09" depth="0.02" color="#2563eb"><a-text value="Z +" align="center" position="0 0 0.02" scale="0.18 0.18 0.18" color="#fff"></a-text></a-box>
+      <a-box id="btn-pz-minus" class="clickable" position="0.05 -0.02 0.03" width="0.22" height="0.09" depth="0.02" color="#2563eb"><a-text value="Z -" align="center" position="0 0 0.02" scale="0.18 0.18 0.18" color="#fff"></a-text></a-box>
+
+      <!-- SEZIONE 2: ROTAZIONE (PITCH, YAW, ROLL) -->
+      <a-text value="ROTAZIONE (PASSO 1°):" position="-0.58 -0.16 0.01" scale="0.2 0.2 0.2" color="#f59e0b"></a-text>
+      
+      <!-- Pitch -->
+      <a-text value="PITCH:" position="-0.58 -0.26 0.01" scale="0.2 0.2 0.2" color="#ffffff"></a-text>
+      <a-box id="btn-rx-plus" class="clickable" position="-0.22 -0.26 0.03" width="0.22" height="0.09" depth="0.02" color="#d97706"><a-text value="P +" align="center" position="0 0 0.02" scale="0.18 0.18 0.18" color="#fff"></a-text></a-box>
+      <a-box id="btn-rx-minus" class="clickable" position="0.05 -0.26 0.03" width="0.22" height="0.09" depth="0.02" color="#d97706"><a-text value="P -" align="center" position="0 0 0.02" scale="0.18 0.18 0.18" color="#fff"></a-text></a-box>
+
+      <!-- Roll -->
+      <a-text value="ROLL:" position="-0.58 -0.38 0.01" scale="0.2 0.2 0.2" color="#ffffff"></a-text>
+      <a-box id="btn-rz-plus" class="clickable" position="-0.22 -0.38 0.03" width="0.22" height="0.09" depth="0.02" color="#d97706"><a-text value="R +" align="center" position="0 0 0.02" scale="0.18 0.18 0.18" color="#fff"></a-text></a-box>
+      <a-box id="btn-rz-minus" class="clickable" position="0.05 -0.38 0.03" width="0.22" height="0.09" depth="0.02" color="#d97706"><a-text value="R -" align="center" position="0 0 0.02" scale="0.18 0.18 0.18" color="#fff"></a-text></a-box>
+
+      <!-- Pulsanti Reset e Griglia -->
+      <a-box id="btn-grip-reset" class="clickable" position="-0.28 -0.54 0.03" width="0.5" height="0.11" depth="0.02" color="#475569">
+        <a-text value="RESET OFFSET" align="center" position="0 0 0.02" scale="0.17 0.17 0.17" color="#ffffff"></a-text>
       </a-box>
 
-      <a-box id="btn-pitch-down" class="clickable" position="0.2 -0.26 0.03" width="0.4" height="0.12" depth="0.02" color="#2563eb">
-        <a-text value="INCLINA -" align="center" position="0 0 0.02" scale="0.2 0.2 0.2" color="#ffffff"></a-text>
+      <a-box id="btn-hud-toggle" class="clickable" position="0.26 -0.54 0.03" width="0.5" height="0.11" depth="0.02" color="#0d9488">
+        <a-text value="GRID ON/OFF" align="center" position="0 0 0.02" scale="0.17 0.17 0.17" color="#ffffff"></a-text>
       </a-box>
 
-      <a-box id="btn-pitch-reset" class="clickable" position="-0.04 -0.42 0.03" width="0.88" height="0.1" depth="0.02" color="#475569">
-        <a-text value="RESET MIRINO (0°)" align="center" position="0 0 0.02" scale="0.18 0.18 0.18" color="#ffffff"></a-text>
-      </a-box>
-
-      <a-box id="btn-hud-toggle" class="clickable" position="-0.04 -0.58 0.03" width="0.88" height="0.1" depth="0.02" color="#0d9488">
-        <a-text value="TOGGLE GRIGLIA PAVIMENTO" align="center" position="0 0 0.02" scale="0.17 0.17 0.17" color="#ffffff"></a-text>
-      </a-box>
+      <!-- Telemetria Stato in Basso -->
+      <a-text id="hud-telemetry" value="Sessione: Standby | Modo: Desktop 2D" position="-0.58 -0.7 0.01" scale="0.18 0.18 0.18" color="#94a3b8"></a-text>
     </a-entity>
 
     <!-- ZONA DI GIOCO CENTRALE -->
     <a-entity id="gameplay-zone" position="0 0 -1.8">
       <a-grid id="floor-grid" position="0 0 1.8" width="8" height="8" color-center="#38bdf8" color-grid="#1e293b"></a-grid>
       
-      <!-- CABINATO ARCADE (Modello GLB) -->
       <a-entity id="arcade-cabinet" 
                 gltf-model="#cabinato-glb" 
                 position="0 0 0" 
@@ -165,57 +178,74 @@
       </a-entity>
     </a-entity>
 
-    <!-- Luci -->
     <a-light type="ambient" color="#ffffff" intensity="0.8"></a-light>
     <a-light type="directional" position="2 4 2" intensity="0.6"></a-light>
     <a-light type="point" position="0 1.5 -1" color="#ff4444" intensity="0.5"></a-light>
 
   </a-scene>
 
-  <!-- Logica JavaScript Vanilla -->
   <script>
     document.addEventListener("DOMContentLoaded", () => {
-      const GAME_VERSION = "0.2.2";
+      const GAME_VERSION = "0.2.4";
       const sceneEl = document.querySelector("a-scene");
       const btnVR = document.getElementById("btn-enter-vr");
       const btnAR = document.getElementById("btn-enter-ar");
       const hudTelemetry = document.getElementById("hud-telemetry");
       const floorGrid = document.getElementById("floor-grid");
       const btnHudToggle = document.getElementById("btn-hud-toggle");
+      const gazeCursor = document.getElementById("gaze-cursor");
 
-      const gunPivot = document.getElementById("gun-alignment-pivot");
-      const rightController = document.getElementById("right-controller");
-      const hudPitchValue = document.getElementById("hud-pitch-value");
-      const btnPitchUp = document.getElementById("btn-pitch-up");
-      const btnPitchDown = document.getElementById("btn-pitch-down");
-      const btnPitchReset = document.getElementById("btn-pitch-reset");
+      // Riferimenti Arma e HUD Readout
+      const berettaModel = document.getElementById("beretta-model");
+      const hudPosReadout = document.getElementById("hud-pos-readout");
+      const hudRotReadout = document.getElementById("hud-rot-readout");
 
-      let currentPitch = 0.0;
+      // Stato Offset Impugnatura (Valori Iniziali)
+      const gunOffset = {
+        x: 0.0,
+        y: -0.03,
+        z: -0.05,
+        rx: -10,
+        ry: 0,
+        rz: 0
+      };
 
-      function updateGunPitch(deltaDegrees) {
-        currentPitch += deltaDegrees;
-        currentPitch = Math.max(-45, Math.min(45, currentPitch));
-        
-        gunPivot.setAttribute("rotation", `${currentPitch} 0 0`);
-        
-        const rad = (currentPitch * Math.PI) / 180;
-        const dirY = Math.sin(-rad);
-        const dirZ = -Math.cos(rad);
-        rightController.setAttribute("raycaster", "direction", `0 ${dirY} ${dirZ}`);
+      // Applica gli offset al modello 3D e aggiorna l'HUD
+      function updateGunTransform() {
+        berettaModel.setAttribute("position", `${gunOffset.x.toFixed(3)} ${gunOffset.y.toFixed(3)} ${gunOffset.z.toFixed(3)}`);
+        berettaModel.setAttribute("rotation", `${gunOffset.rx.toFixed(1)} ${gunOffset.ry.toFixed(1)} ${gunOffset.rz.toFixed(1)}`);
 
-        hudPitchValue.setAttribute("value", `Inclinazione: ${currentPitch.toFixed(1)}°`);
+        hudPosReadout.setAttribute("value", `POS: X:${gunOffset.x.toFixed(3)} Y:${gunOffset.y.toFixed(3)} Z:${gunOffset.z.toFixed(3)}`);
+        hudRotReadout.setAttribute("value", `ROT: P:${gunOffset.rx.toFixed(0)}° Y:${gunOffset.ry.toFixed(0)}° R:${gunOffset.rz.toFixed(0)}°`);
       }
 
-      btnPitchUp.addEventListener("click", () => updateGunPitch(0.5));
-      btnPitchDown.addEventListener("click", () => updateGunPitch(-0.5));
-      btnPitchReset.addEventListener("click", () => {
-        currentPitch = 0.0;
-        updateGunPitch(0.0);
+      // Event Listeners Traslazione (Passo 0.005m / 0.5cm)
+      document.getElementById("btn-px-plus").addEventListener("click", () => { gunOffset.x += 0.005; updateGunTransform(); });
+      document.getElementById("btn-px-minus").addEventListener("click", () => { gunOffset.x -= 0.005; updateGunTransform(); });
+      document.getElementById("btn-py-plus").addEventListener("click", () => { gunOffset.y += 0.005; updateGunTransform(); });
+      document.getElementById("btn-py-minus").addEventListener("click", () => { gunOffset.y -= 0.005; updateGunTransform(); });
+      document.getElementById("btn-pz-plus").addEventListener("click", () => { gunOffset.z += 0.005; updateGunTransform(); });
+      document.getElementById("btn-pz-minus").addEventListener("click", () => { gunOffset.z -= 0.005; updateGunTransform(); });
+
+      // Event Listeners Rotazione (Passo 1°)
+      document.getElementById("btn-rx-plus").addEventListener("click", () => { gunOffset.rx += 1; updateGunTransform(); });
+      document.getElementById("btn-rx-minus").addEventListener("click", () => { gunOffset.rx -= 1; updateGunTransform(); });
+      document.getElementById("btn-rz-plus").addEventListener("click", () => { gunOffset.rz += 1; updateGunTransform(); });
+      document.getElementById("btn-rz-minus").addEventListener("click", () => { gunOffset.rz -= 1; updateGunTransform(); });
+
+      // Reset Offset
+      document.getElementById("btn-grip-reset").addEventListener("click", () => {
+        gunOffset.x = 0.0;
+        gunOffset.y = -0.03;
+        gunOffset.z = -0.05;
+        gunOffset.rx = -10;
+        gunOffset.ry = 0;
+        gunOffset.rz = 0;
+        updateGunTransform();
       });
 
-      btnVR.addEventListener("click", () => {
-        sceneEl.enterVR();
-      });
+      // Gestione Sessione WebXR
+      btnVR.addEventListener("click", () => sceneEl.enterVR());
 
       btnAR.addEventListener("click", () => {
         if (typeof sceneEl.enterAR === "function") {
@@ -228,17 +258,16 @@
 
       sceneEl.addEventListener("enter-vr", () => {
         const isAR = sceneEl.is("ar-mode");
-        const modeText = isAR ? "Modalità: AR (Passthrough)" : "Modalità: VR Immersiva";
-        hudTelemetry.setAttribute("value", `Sessione: Attiva\n${modeText}\nFloor Sync: local-floor (Y=0)`);
-        
-        if (isAR) {
-          floorGrid.setAttribute("visible", "false");
-        }
+        const modeText = isAR ? "AR Passthrough" : "VR Immersiva";
+        hudTelemetry.setAttribute("value", `Sessione: Attiva | ${modeText}`);
+        if (gazeCursor) gazeCursor.setAttribute("visible", "false");
+        if (isAR) floorGrid.setAttribute("visible", "false");
       });
 
       sceneEl.addEventListener("exit-vr", () => {
-        hudTelemetry.setAttribute("value", "Sessione: Inattiva\nModo: Desktop 2D\nFloor Sync: local-floor (Y=0)");
+        hudTelemetry.setAttribute("value", "Sessione: Inattiva | Modo: Desktop 2D");
         floorGrid.setAttribute("visible", "true");
+        if (gazeCursor) gazeCursor.setAttribute("visible", "true");
       });
 
       btnHudToggle.addEventListener("click", () => {
