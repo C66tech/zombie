@@ -10,8 +10,8 @@
   <meta http-equiv="Expires" content="0">
 
   <!-- Versione Gioco nei Meta Dati -->
-  <meta name="game-version" content="0.2.10">
-  <title>WebXR 60s Zombie Arcade - v0.2.10</title>
+  <meta name="game-version" content="0.2.11">
+  <title>WebXR 60s Zombie Arcade - v0.2.11</title>
 
   <!-- A-Frame v1.6.0 -->
   <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
@@ -67,11 +67,69 @@
       box-shadow: 0 0 12px rgba(59, 130, 246, 0.5);
     }
   </style>
+
+  <script>
+    // Componente A-Frame per la gestione animata delle luci del Cabinato
+    AFRAME.registerComponent('cabinet-lighting', {
+      init: function () {
+        this.spot1 = null;
+        this.spot2 = null;
+        this.spot3 = null;
+        this.baseIntensities = { spot1: 2.0, spot2: 2.0, spot3: 2.5 };
+
+        this.el.addEventListener('model-loaded', () => {
+          const mesh = this.el.getObject3D('mesh');
+          if (!mesh) return;
+
+          mesh.traverse((node) => {
+            if (node.isLight || (node.type && node.type.includes('Light'))) {
+              const name = node.name || '';
+              
+              if (name.includes('SpotLight1')) {
+                this.spot1 = node;
+                this.spot1.color.setHex(0xfff1e0); // Bianco Caldo
+                if (node.intensity) this.baseIntensities.spot1 = node.intensity;
+              } else if (name.includes('SpotLight2')) {
+                this.spot2 = node;
+                this.spot2.color.setHex(0xfff1e0); // Bianco Caldo
+                if (node.intensity) this.baseIntensities.spot2 = node.intensity;
+              } else if (name.includes('SpotLight3')) {
+                this.spot3 = node;
+                this.spot3.color.setHex(0x0055ff); // Blu
+                if (node.intensity) this.baseIntensities.spot3 = node.intensity;
+              }
+            }
+          });
+        });
+      },
+
+      tick: function (time, timeDelta) {
+        const t = time * 0.001; // Tempo in secondi
+
+        // 1. SpotLight1 & SpotLight2: Bianco Caldo con variazione sinusoidale lenta
+        if (this.spot1) {
+          const sine1 = Math.sin(t * 1.5);
+          this.spot1.intensity = this.baseIntensities.spot1 * (0.75 + 0.25 * sine1);
+        }
+        if (this.spot2) {
+          const sine2 = Math.sin(t * 1.5 + 0.8); // Offset per sfasamento naturale
+          this.spot2.intensity = this.baseIntensities.spot2 * (0.75 + 0.25 * sine2);
+        }
+
+        // 2. SpotLight3: Blu con effetto sfarfallio (Flicker)
+        if (this.spot3) {
+          const flickerNoise = Math.random() * 0.45;
+          const microDrop = Math.random() < 0.08 ? 0.2 : 1.0; // Micro interruzione casuale dell'8%
+          this.spot3.intensity = this.baseIntensities.spot3 * (0.65 + flickerNoise) * microDrop;
+        }
+      }
+    });
+  </script>
 </head>
 <body>
 
   <div id="version-overlay">
-    CABINATO ZOMBIE 1960s - <span id="version-text">v0.2.10</span>
+    CABINATO ZOMBIE 1960s - <span id="version-text">v0.2.11</span>
   </div>
 
   <div id="xr-controls">
@@ -86,8 +144,8 @@
     vr-mode-ui="enabled: false">
 
     <a-assets>
-      <a-asset-item id="cabinato-glb" src="Cabinato.glb?v=0.2.10"></a-asset-item>
-      <a-asset-item id="beretta-glb" src="Beretta.glb?v=0.2.10"></a-asset-item>
+      <a-asset-item id="cabinato-glb" src="Cabinato.glb?v=0.2.11"></a-asset-item>
+      <a-asset-item id="beretta-glb" src="Beretta.glb?v=0.2.11"></a-asset-item>
     </a-assets>
 
     <a-entity id="rig" position="0 0 0">
@@ -95,7 +153,7 @@
         <a-cursor id="gaze-cursor" raycaster="objects: .clickable" color="#00ffcc" scale="0.5 0.5 0.5"></a-cursor>
       </a-camera>
 
-      <!-- Controller Sinistro (Interazione HUD) -->
+      <!-- Controller Sinistro -->
       <a-entity id="left-controller" laser-controls="hand: left; model: true" raycaster="objects: .clickable; far: 5"></a-entity>
 
       <!-- Controller Destro -->
@@ -113,64 +171,47 @@
       </a-entity>
     </a-entity>
 
-    <!-- 3D HUD PANNELLO INFO E CONTROLLO LUCI (Sinistra) -->
+    <!-- 3D HUD PANNELLO INFO (Sinistra) -->
     <a-entity id="hud-debug-panel" position="-1.4 1.35 -1.1" rotation="0 35 0">
-      <a-plane width="1.2" height="1.3" color="#0f172a" material="opacity: 0.92; transparent: true; shader: flat"></a-plane>
+      <a-plane width="1.1" height="1.0" color="#0f172a" material="opacity: 0.92; transparent: true; shader: flat"></a-plane>
       
-      <a-text value="CONTROLLO LUCI CABINATO" position="-0.52 0.5 0.01" scale="0.3 0.3 0.3" color="#38bdf8" font="monoid"></a-text>
-      <a-text value="VER: v0.2.10" position="-0.52 0.42 0.01" scale="0.22 0.22 0.22" color="#94a3b8"></a-text>
+      <a-text value="INFO E TELEMETRIA" position="-0.48 0.38 0.01" scale="0.32 0.32 0.32" color="#38bdf8" font="monoid"></a-text>
+      <a-text value="VER: v0.2.11" position="-0.48 0.30 0.01" scale="0.22 0.22 0.22" color="#94a3b8"></a-text>
 
-      <!-- Stato Luci -->
-      <a-text id="hud-light-status" value="Colore: #ff0000 | Intensità: 1.0" position="-0.52 0.3 0.01" scale="0.2 0.2 0.2" color="#00ffcc"></a-text>
+      <a-text value="STATO ILLUMINAZIONE:" position="-0.48 0.18 0.01" scale="0.2 0.2 0.2" color="#f59e0b"></a-text>
+      <a-text value="SpotLight 1/2: Caldo Sinusoidale\nSpotLight 3: Blu Sfarfallante" position="-0.48 0.08 0.01" scale="0.18 0.18 0.18" color="#00ffcc"></a-text>
 
-      <!-- Tasti Cambio Colore e Intensità dall'HUD -->
-      <a-box id="btn-change-color" class="clickable" position="0 0.1 0.03" width="0.9" height="0.12" depth="0.02" color="#7c3aed">
-        <a-text value="CAMBIA COLORE LUCE" align="center" position="0 0 0.02" scale="0.18 0.18 0.18" color="#ffffff"></a-text>
+      <a-box id="btn-hud-toggle" class="clickable" position="0 -0.12 0.03" width="0.85" height="0.12" depth="0.02" color="#0d9488">
+        <a-text value="TOGGLE GRIGLIA PAVIMENTO" align="center" position="0 0 0.02" scale="0.18 0.18 0.18" color="#ffffff"></a-text>
       </a-box>
 
-      <a-box id="btn-toggle-intensity" class="clickable" position="0 -0.06 0.03" width="0.9" height="0.12" depth="0.02" color="#2563eb">
-        <a-text value="CAMBIA INTENSITÀ (1x / 2.5x)" align="center" position="0 0 0.02" scale="0.17 0.17 0.17" color="#ffffff"></a-text>
-      </a-box>
-
-      <a-box id="btn-hud-toggle" class="clickable" position="0 -0.22 0.03" width="0.9" height="0.12" depth="0.02" color="#0d9488">
-        <a-text value="TOGGLE GRIGLIA PAVIMENTO" align="center" position="0 0 0.02" scale="0.17 0.17 0.17" color="#ffffff"></a-text>
-      </a-box>
-
-      <a-text id="hud-telemetry" value="Sessione: Standby | Modo: Desktop 2D" position="-0.52 -0.45 0.01" scale="0.18 0.18 0.18" color="#94a3b8"></a-text>
+      <a-text id="hud-telemetry" value="Sessione: Standby | Modo: Desktop 2D" position="-0.48 -0.32 0.01" scale="0.18 0.18 0.18" color="#94a3b8"></a-text>
     </a-entity>
 
     <!-- ZONA DI GIOCO CENTRALE -->
     <a-entity id="gameplay-zone" position="0 0 -1.8">
       <a-grid id="floor-grid" position="0 0 1.8" width="8" height="8" color-center="#38bdf8" color-grid="#1e293b"></a-grid>
       
-      <!-- CABINATO ARCADE (Modello GLB) -->
+      <!-- CABINATO ARCADE (Con componente luci integrato) -->
       <a-entity id="arcade-cabinet" 
                 gltf-model="#cabinato-glb" 
+                cabinet-lighting
                 position="0 0 0" 
                 rotation="0 0 0" 
                 scale="1 1 1"
                 class="target">
-        
-        <!-- Luce Ambientale/Atmosfera interna al cabinato (Sincronizzata via JS) -->
-        <a-light id="cabinet-internal-light" 
-                 type="point" 
-                 color="#ff0000" 
-                 intensity="1.0" 
-                 distance="3" 
-                 position="0 1.2 0">
-        </a-light>
       </a-entity>
     </a-entity>
 
-    <!-- Luci Generali Scena -->
-    <a-light type="ambient" color="#ffffff" intensity="0.6"></a-light>
-    <a-light type="directional" position="2 4 2" intensity="0.5"></a-light>
+    <!-- Luci Scena Esterne -->
+    <a-light type="ambient" color="#ffffff" intensity="0.5"></a-light>
+    <a-light type="directional" position="2 4 2" intensity="0.4"></a-light>
 
   </a-scene>
 
   <script>
     document.addEventListener("DOMContentLoaded", () => {
-      const GAME_VERSION = "0.2.10";
+      const GAME_VERSION = "0.2.11";
       const sceneEl = document.querySelector("a-scene");
       const btnVR = document.getElementById("btn-enter-vr");
       const btnAR = document.getElementById("btn-enter-ar");
@@ -179,73 +220,6 @@
       const btnHudToggle = document.getElementById("btn-hud-toggle");
       const gazeCursor = document.getElementById("gaze-cursor");
 
-      const arcadeCabinet = document.getElementById("arcade-cabinet");
-      const cabinetLight = document.getElementById("cabinet-internal-light");
-      const hudLightStatus = document.getElementById("hud-light-status");
-      const btnChangeColor = document.getElementById("btn-change-color");
-      const btnToggleIntensity = document.getElementById("btn-toggle-intensity");
-
-      // Palette Colori Vintage Arcade per il Cambio Dinamico
-      const lightColors = ["#ff0000", "#00ffcc", "#f59e0b", "#a855f7", "#10b981"];
-      let colorIndex = 0;
-      let currentIntensity = 1.0;
-      let internalGltfLights = []; // Riferimento alle eventuali luci native trovate dentro Cabinato.glb
-
-      // 1. Ispezione del modello GLB all'avvio per rilevare luci create in Blender
-      arcadeCabinet.addEventListener("model-loaded", () => {
-        const mesh = arcadeCabinet.getObject3D("mesh");
-        if (!mesh) return;
-
-        mesh.traverse((node) => {
-          if (node.isLight) {
-            console.log("Trovata luce nativa nel file GLB del Cabinato:", node.name || "Luce Senza Nome");
-            internalGltfLights.push(node);
-          }
-        });
-      });
-
-      // 2. Funzione per aggiornare il colore sia della luce A-Frame che di quelle nel GLB
-      function setCabinetLightColor(hexColor) {
-        // Aggiorna luce A-Frame
-        cabinetLight.setAttribute("light", "color", hexColor);
-
-        // Aggiorna eventuali luci native trovate nel file GLB Three.js
-        internalGltfLights.forEach(light => {
-          light.color.set(hexColor);
-        });
-
-        updateLightHUDInfo();
-      }
-
-      // 3. Funzione per aggiornare l'intensità
-      function setCabinetLightIntensity(val) {
-        currentIntensity = val;
-        cabinetLight.setAttribute("light", "intensity", val);
-
-        internalGltfLights.forEach(light => {
-          light.intensity = val;
-        });
-
-        updateLightHUDInfo();
-      }
-
-      function updateLightHUDInfo() {
-        const currentColor = lightColors[colorIndex];
-        hudLightStatus.setAttribute("value", `Colore: ${currentColor} | Intensita: ${currentIntensity.toFixed(1)}`);
-      }
-
-      // Handlers Pulsanti HUD
-      btnChangeColor.addEventListener("click", () => {
-        colorIndex = (colorIndex + 1) % lightColors.length;
-        setCabinetLightColor(lightColors[colorIndex]);
-      });
-
-      btnToggleIntensity.addEventListener("click", () => {
-        const nextIntensity = currentIntensity === 1.0 ? 2.5 : 1.0;
-        setCabinetLightIntensity(nextIntensity);
-      });
-
-      // Gestione VR/AR
       btnVR.addEventListener("click", () => sceneEl.enterVR());
 
       btnAR.addEventListener("click", () => {
