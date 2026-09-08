@@ -4,14 +4,14 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <!-- Meta Tag Anti-Cache -->
+  <!-- Meta Tag Anti-Cache per Browser -->
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
 
   <!-- Versione Gioco nei Meta Dati -->
-  <meta name="game-version" content="0.2.7">
-  <title>WebXR 60s Zombie Arcade - v0.2.7</title>
+  <meta name="game-version" content="0.2.8">
+  <title>WebXR 60s Zombie Arcade - v0.2.8</title>
 
   <!-- A-Frame v1.6.0 -->
   <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
@@ -71,7 +71,7 @@
 <body>
 
   <div id="version-overlay">
-    CABINATO ZOMBIE 1960s - <span id="version-text">v0.2.7</span>
+    CABINATO ZOMBIE 1960s - <span id="version-text">v0.2.8</span>
   </div>
 
   <div id="xr-controls">
@@ -86,8 +86,8 @@
     vr-mode-ui="enabled: false">
 
     <a-assets>
-      <a-asset-item id="cabinato-glb" src="Cabinato.glb?v=0.2.7"></a-asset-item>
-      <a-asset-item id="beretta-glb" src="Beretta.glb?v=0.2.7"></a-asset-item>
+      <a-asset-item id="cabinato-glb" src="Cabinato.glb?v=0.2.8"></a-asset-item>
+      <a-asset-item id="beretta-glb" src="Beretta.glb?v=0.2.8"></a-asset-item>
     </a-assets>
 
     <a-entity id="rig" position="0 0 0">
@@ -95,18 +95,18 @@
         <a-cursor id="gaze-cursor" raycaster="objects: .clickable" color="#00ffcc" scale="0.5 0.5 0.5"></a-cursor>
       </a-camera>
 
-      <!-- Controller Sinistro (Interazione HUD) -->
+      <!-- Controller Sinistro (HUD) -->
       <a-entity id="left-controller" laser-controls="hand: left; model: true" raycaster="objects: .clickable; far: 5"></a-entity>
 
-      <!-- Controller Destro (Rendering controller nativo DISATTIVATO) -->
+      <!-- Controller Destro (Senza rendering modello visore) -->
       <a-entity id="right-controller" laser-controls="hand: right; model: false">
-        <!-- Modello Beretta inclinato in avanti (-25 deg) -->
+        <!-- Beretta inclinata a -25° sull'asse X -->
         <a-entity id="beretta-model" 
                   gltf-model="#beretta-glb" 
                   position="0 -0.03 -0.05" 
                   rotation="-25 0 0" 
                   scale="1 1 1">
-          <!-- Raggio Laser coassiale all'asse locale dell'arma -->
+          <!-- Raggio Laser coassiale all'asse dell'arma -->
           <a-entity id="gun-laser" 
                     raycaster="objects: .clickable, .target; far: 10; showLine: true; origin: 0 0 0; direction: 0 0 -1" 
                     line="color: #ff0000; opacity: 0.85">
@@ -115,40 +115,21 @@
       </a-entity>
     </a-entity>
 
-    <!-- 3D HUD DI DEBUG & POSIZIONAMENTO ARMA (Sinistra) -->
-    <a-entity id="hud-debug-panel" position="-1.45 1.35 -1.1" rotation="0 35 0">
-      <a-plane width="1.4" height="1.35" color="#0f172a" material="opacity: 0.93; transparent: true; shader: flat"></a-plane>
+    <!-- 3D HUD PANNELLO INFO (Sinistra) -->
+    <a-entity id="hud-debug-panel" position="-1.4 1.35 -1.1" rotation="0 35 0">
+      <a-plane width="1.1" height="1.0" color="#0f172a" material="opacity: 0.92; transparent: true; shader: flat"></a-plane>
       
-      <a-text value="POSIZIONAMENTO ARMA" position="-0.63 0.55 0.01" scale="0.32 0.32 0.32" color="#38bdf8" font="monoid"></a-text>
-      <a-text value="VER: v0.2.7" position="-0.63 0.47 0.01" scale="0.22 0.22 0.22" color="#94a3b8"></a-text>
+      <a-text value="INFO E TELEMETRIA" position="-0.48 0.38 0.01" scale="0.32 0.32 0.32" color="#38bdf8" font="monoid"></a-text>
+      <a-text value="VER: v0.2.8" position="-0.48 0.30 0.01" scale="0.22 0.22 0.22" color="#94a3b8"></a-text>
 
-      <!-- Readout Posizione -->
-      <a-text id="hud-pos-readout" value="POS: X:0.000 Y:-0.030 Z:-0.050" position="-0.63 0.35 0.01" scale="0.23 0.23 0.23" color="#00ffcc"></a-text>
-      <a-text value="INCLINAZIONE FISSA: Pitch -25°" position="-0.63 0.27 0.01" scale="0.2 0.2 0.2" color="#f59e0b"></a-text>
+      <a-text value="CONFIGURAZIONE ARMA:" position="-0.48 0.18 0.01" scale="0.2 0.2 0.2" color="#f59e0b"></a-text>
+      <a-text value="Posizione: (0, -0.03, -0.05)\nInclinazione: -25° (Pitch Negativo)" position="-0.48 0.08 0.01" scale="0.18 0.18 0.18" color="#00ffcc"></a-text>
 
-      <!-- REGOLAZIONE TRASLAZIONE (X, Y, Z) -->
-      <a-text value="ASSE X:" position="-0.63 0.14 0.01" scale="0.2 0.2 0.2" color="#ffffff"></a-text>
-      <a-box id="btn-px-plus" class="clickable" position="-0.24 0.14 0.03" width="0.24" height="0.09" depth="0.02" color="#2563eb"><a-text value="X +" align="center" position="0 0 0.02" scale="0.18 0.18 0.18" color="#fff"></a-text></a-box>
-      <a-box id="btn-px-minus" class="clickable" position="0.06 0.14 0.03" width="0.24" height="0.09" depth="0.02" color="#2563eb"><a-text value="X -" align="center" position="0 0 0.02" scale="0.18 0.18 0.18" color="#fff"></a-text></a-box>
-
-      <a-text value="ASSE Y:" position="-0.63 0.02 0.01" scale="0.2 0.2 0.2" color="#ffffff"></a-text>
-      <a-box id="btn-py-plus" class="clickable" position="-0.24 0.02 0.03" width="0.24" height="0.09" depth="0.02" color="#2563eb"><a-text value="Y +" align="center" position="0 0 0.02" scale="0.18 0.18 0.18" color="#fff"></a-text></a-box>
-      <a-box id="btn-py-minus" class="clickable" position="0.06 0.02 0.03" width="0.24" height="0.09" depth="0.02" color="#2563eb"><a-text value="Y -" align="center" position="0 0 0.02" scale="0.18 0.18 0.18" color="#fff"></a-text></a-box>
-
-      <a-text value="ASSE Z:" position="-0.63 -0.10 0.01" scale="0.2 0.2 0.2" color="#ffffff"></a-text>
-      <a-box id="btn-pz-plus" class="clickable" position="-0.24 -0.10 0.03" width="0.24" height="0.09" depth="0.02" color="#2563eb"><a-text value="Z +" align="center" position="0 0 0.02" scale="0.18 0.18 0.18" color="#fff"></a-text></a-box>
-      <a-box id="btn-pz-minus" class="clickable" position="0.06 -0.10 0.03" width="0.24" height="0.09" depth="0.02" color="#2563eb"><a-text value="Z -" align="center" position="0 0 0.02" scale="0.18 0.18 0.18" color="#fff"></a-text></a-box>
-
-      <!-- Pulsanti Utility -->
-      <a-box id="btn-grip-reset" class="clickable" position="-0.30 -0.28 0.03" width="0.55" height="0.11" depth="0.02" color="#475569">
-        <a-text value="RESET POS" align="center" position="0 0 0.02" scale="0.17 0.17 0.17" color="#ffffff"></a-text>
+      <a-box id="btn-hud-toggle" class="clickable" position="0 -0.12 0.03" width="0.85" height="0.12" depth="0.02" color="#0d9488">
+        <a-text value="TOGGLE GRIGLIA PAVIMENTO" align="center" position="0 0 0.02" scale="0.18 0.18 0.18" color="#ffffff"></a-text>
       </a-box>
 
-      <a-box id="btn-hud-toggle" class="clickable" position="0.30 -0.28 0.03" width="0.55" height="0.11" depth="0.02" color="#0d9488">
-        <a-text value="GRID ON/OFF" align="center" position="0 0 0.02" scale="0.17 0.17 0.17" color="#ffffff"></a-text>
-      </a-box>
-
-      <a-text id="hud-telemetry" value="Sessione: Standby | Modo: Desktop 2D" position="-0.63 -0.48 0.01" scale="0.18 0.18 0.18" color="#94a3b8"></a-text>
+      <a-text id="hud-telemetry" value="Sessione: Standby | Modo: Desktop 2D" position="-0.48 -0.32 0.01" scale="0.18 0.18 0.18" color="#94a3b8"></a-text>
     </a-entity>
 
     <!-- ZONA DI GIOCO CENTRALE -->
@@ -172,7 +153,7 @@
 
   <script>
     document.addEventListener("DOMContentLoaded", () => {
-      const GAME_VERSION = "0.2.7";
+      const GAME_VERSION = "0.2.8";
       const sceneEl = document.querySelector("a-scene");
       const btnVR = document.getElementById("btn-enter-vr");
       const btnAR = document.getElementById("btn-enter-ar");
@@ -181,38 +162,6 @@
       const btnHudToggle = document.getElementById("btn-hud-toggle");
       const gazeCursor = document.getElementById("gaze-cursor");
 
-      const berettaModel = document.getElementById("beretta-model");
-      const hudPosReadout = document.getElementById("hud-pos-readout");
-
-      const gunOffset = {
-        x: 0.0,
-        y: -0.03,
-        z: -0.05,
-        pitch: -25 // Inclinazione fissa in avanti
-      };
-
-      function updateGunPosition() {
-        berettaModel.setAttribute("position", `${gunOffset.x.toFixed(3)} ${gunOffset.y.toFixed(3)} ${gunOffset.z.toFixed(3)}`);
-        hudPosReadout.setAttribute("value", `POS: X:${gunOffset.x.toFixed(3)} Y:${gunOffset.y.toFixed(3)} Z:${gunOffset.z.toFixed(3)}`);
-      }
-
-      // Traslazione (Passo 0.005m / 0.5cm)
-      document.getElementById("btn-px-plus").addEventListener("click", () => { gunOffset.x += 0.005; updateGunPosition(); });
-      document.getElementById("btn-px-minus").addEventListener("click", () => { gunOffset.x -= 0.005; updateGunPosition(); });
-      document.getElementById("btn-py-plus").addEventListener("click", () => { gunOffset.y += 0.005; updateGunPosition(); });
-      document.getElementById("btn-py-minus").addEventListener("click", () => { gunOffset.y -= 0.005; updateGunPosition(); });
-      document.getElementById("btn-pz-plus").addEventListener("click", () => { gunOffset.z += 0.005; updateGunPosition(); });
-      document.getElementById("btn-pz-minus").addEventListener("click", () => { gunOffset.z -= 0.005; updateGunPosition(); });
-
-      // Reset
-      document.getElementById("btn-grip-reset").addEventListener("click", () => {
-        gunOffset.x = 0.0;
-        gunOffset.y = -0.03;
-        gunOffset.z = -0.05;
-        updateGunPosition();
-      });
-
-      // Gestione Sessione WebXR
       btnVR.addEventListener("click", () => sceneEl.enterVR());
 
       btnAR.addEventListener("click", () => {
