@@ -3,9 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <!-- Versioning nel Meta Tag -->
-  <meta name="game-version" content="1.1.0">
-  <title>Tiro a Segno VR/AR - v1.1.0</title>
+  <meta name="game-version" content="1.2.0">
+  <title>Tiro a Segno VR/AR - v1.2.0</title>
   <style>
     body {
       margin: 0;
@@ -90,7 +89,7 @@
 
   <!-- UI OVERLAY -->
   <div id="ui-container">
-    <div class="version-badge" id="game-version">VER. 1.1.0</div>
+    <div class="version-badge" id="game-version">VER. 1.2.0</div>
     <div class="score-badge">PUNTI: <span id="score">0</span></div>
   </div>
 
@@ -104,8 +103,7 @@
     import * as THREE from 'three';
     import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
-    // VERSIONE DEL GIOCO
-    const GAME_VERSION = "1.1.0";
+    const GAME_VERSION = "1.2.0";
 
     class ShootingGame {
       constructor() {
@@ -113,6 +111,7 @@
         this.score = 0;
         this.targets = [];
         this.berettaModel = null;
+        this.spots = []; // Riferimento alle luci per lo sfarfallio
 
         this.initAudio();
         this.initScene();
@@ -181,10 +180,28 @@
         this.renderer.xr.enabled = true;
         document.body.appendChild(this.renderer.domElement);
 
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
+        // Luce ambiente molto fioca con tinta calda
+        const ambientLight = new THREE.AmbientLight(0xffeedd, 0.15);
         this.scene.add(ambientLight);
 
         this.raycaster = new THREE.Raycaster();
+      }
+
+      // --- CONFIGURAZIONE RAGGIO LASER PARALLELO ---
+      createLaserBeam() {
+        const laserGeo = new THREE.BufferGeometry().setFromPoints([
+          new THREE.Vector3(0, 0, 0),
+          new THREE.Vector3(0, 0, -15) // Raggio parallelo proiettato in avanti
+        ]);
+        const laserMat = new THREE.LineBasicMaterial({
+          color: 0xff0033,
+          transparent: true,
+          opacity: 0.7,
+          linewidth: 2
+        });
+        const laser = new THREE.Line(laserGeo, laserMat);
+        laser.position.set(0, 0.02, 0); // Leggero offset sulla canna
+        return laser;
       }
 
       // --- GESTIONE SESSIONI VR & AR ---
@@ -207,7 +224,6 @@
           arBtn.disabled = true;
         }
 
-        // Setup Controller per Beretta
         const gltfLoader = new GLTFLoader();
         for (let i = 0; i < 2; i++) {
           const controller = this.renderer.xr.getController(i);
@@ -223,6 +239,11 @@
                 this.berettaModel = gltf.scene;
                 this.berettaModel.rotation.x = -Math.PI / 4;
                 this.berettaModel.position.set(0, 0, -0.05);
+
+                // Aggiungiamo il raggio laser agganciato direttamente alla Beretta
+                const laser = this.createLaserBeam();
+                this.berettaModel.add(laser);
+
                 grip.add(this.berettaModel);
               });
             }
@@ -237,7 +258,7 @@
           });
           
           if (mode === 'immersive-ar') {
-            this.scene.background = null; // Trasparente in AR
+            this.scene.background = null;
           }
 
           session.addEventListener('end', () => {
@@ -250,13 +271,11 @@
         }
       }
 
-      // --- CARICAMENTO CABINATO A 2 METRI ---
+      // --- CARICAMENTO CABINATO & LUCI BIANCO CALDO ---
       loadCabinato() {
         const loader = new GLTFLoader();
         loader.load('Cabinato.glb', (gltf) => {
           this.cabinato = gltf.scene;
-          
-          // Posizionamento: 2 metri davanti al giocatore
           this.cabinato.position.set(0, 0, -2.0);
           this.scene.add(this.cabinato);
 
@@ -266,7 +285,7 @@
       }
 
       setupCabinatoLights(cabinato) {
-        // Target interni al Cabinato
+        // Target interni
         this.targetRightFront = new THREE.Object3D();
         this.targetRightFront.position.set(0.2, 0.9, 0.0);
         cabinato.add(this.targetRightFront);
@@ -279,21 +298,31 @@
         this.targetBackground.position.set(0.0, 0.0, 0.0);
         cabinato.add(this.targetBackground);
 
-        // Faretti Spot
-        this.spot1 = new THREE.SpotLight(0xffffff, 3.0, 5, Math.PI / 5, 0.2);
+        // Faretti Spot con colore Bianco Caldo (0xffe4ce)
+        const warmColor = 0xffe4ce;
+        const baseIntensity = 3.0;
+
+        this.spot1 = new THREE.SpotLight(warmColor, baseIntensity, 5, Math.PI / 5, 0.2);
         this.spot1.position.set(-0.45, 1.9, -1.1);
         this.spot1.target = this.targetRightFront;
         cabinato.add(this.spot1);
 
-        this.spot2 = new THREE.SpotLight(0xffffff, 3.0, 5, Math.PI / 5, 0.2);
+        this.spot2 = new THREE.SpotLight(warmColor, baseIntensity, 5, Math.PI / 5, 0.2);
         this.spot2.position.set(0.45, 1.9, 0.45);
         this.spot2.target = this.targetLeftFront;
         cabinato.add(this.spot2);
 
-        this.spot3 = new THREE.SpotLight(0xffffff, 3.0, 5, Math.PI / 4, 0.2);
+        this.spot3 = new THREE.SpotLight(warmColor, baseIntensity, 5, Math.PI / 4, 0.2);
         this.spot3.position.set(0.0, 1.9, 0.0);
         this.spot3.target = this.targetBackground;
         cabinato.add(this.spot3);
+
+        // Salviamo i faretti per gestirne lo sfarfallio
+        this.spots = [
+          { light: this.spot1, base: baseIntensity },
+          { light: this.spot2, base: baseIntensity },
+          { light: this.spot3, base: baseIntensity }
+        ];
       }
 
       // --- BERSAGLI MOBILI ---
@@ -332,7 +361,6 @@
           this.renderer.setSize(window.innerWidth, window.innerHeight);
         });
 
-        // Click Mouse per test Desktop
         window.addEventListener('click', () => {
           if (!this.renderer.xr.isPresenting) {
             this.raycaster.setFromCamera(new THREE.Vector2(0, 0), this.camera);
@@ -371,6 +399,7 @@
 
       // --- LOOP DI RENDERING ---
       render() {
+        // Movimento bersagli
         if (this.cabinato) {
           this.targets.forEach((target) => {
             target.position.x += target.userData.speed * target.userData.dir;
@@ -380,11 +409,19 @@
           });
         }
 
+        // Effetto Sfarfallio (Flicker) delle luci calde
+        this.spots.forEach(item => {
+          if (Math.random() > 0.92) {
+            item.light.intensity = item.base * (0.4 + Math.random() * 0.8);
+          } else {
+            item.light.intensity = item.base;
+          }
+        });
+
         this.renderer.render(this.scene, this.camera);
       }
     }
 
-    // Avvio del gioco
     new ShootingGame();
   </script>
 </body>
