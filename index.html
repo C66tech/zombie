@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Zombie Shooting Gallery - v1.4.0</title>
+    <title>Zombie Shooting Gallery - v1.5.0</title>
     <!-- Importazione di A-Frame -->
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <style>
@@ -62,7 +62,7 @@
 
     <!-- UI Overlay nel Browser con Pulsanti AR / VR e Versione -->
     <div id="ui-overlay">
-        <h1>Zombie Gallery XR <span class="version-badge">v1.4.0</span></h1>
+        <h1>Zombie Gallery XR <span class="version-badge">v1.5.0</span></h1>
         <p style="margin: 0 0 10px 0; font-size: 0.9rem; color: #aaa;">Seleziona la modalità di immersione:</p>
         <div class="btn-group">
             <button id="btn-vr">Entra in VR</button>
@@ -86,33 +86,31 @@
             <!-- Controller Sinistro standard -->
             <a-entity laser-controls="hand: left"></a-entity>
             
-            <!-- Controller Destro: Genera il raggio laser e ospita il modello 3D della Beretta -->
+            <!-- Controller Destro con Beretta e Raggio Laser -->
             <a-entity id="right-controller" laser-controls="hand: right" raycaster="objects: .clickable; showLine: true; lineColor: #ff3366; lineOpacity: 0.6">
-                <!-- Modello Pistola (puoi aggiustare posizione e rotazione base se necessario) -->
                 <a-entity id="beretta-entity" gltf-model="#beretta-model" position="0 0 0" rotation="0 0 0" scale="1 1 1"></a-entity>
             </a-entity>
         </a-entity>
 
-        <!-- Illuminazione Ambientale -->
+        <!-- Illuminazione -->
         <a-light type="ambient" color="#404050" intensity="0.8"></a-light>
         <a-light type="directional" position="0 4 2" intensity="0.6" color="#ffccaa"></a-light>
-        <a-sky color="#0c0c10"></a-sky>
+        
+        <!-- Skybox: Viene disattivata automaticamente in AR per evitare lo schermo nero -->
+        <a-sky id="scene-sky" color="#0c0c10"></a-sky>
 
-        <!-- MODELLO DEL CABINATO (Piazzato frontalmente nella scena) -->
+        <!-- MODELLO DEL CABINATO -->
         <a-entity id="cabinato" gltf-model="#cabinato-model" position="0 0 -3" scale="1 1 1"></a-entity>
 
-        <!-- HUD SPATIALE (Posizionato sulla sinistra, discostato dalla zona di gioco frontale) -->
+        <!-- HUD SPATIALE (Posizionato sulla sinistra) -->
         <a-entity id="hud-panel" position="-1.8 1.5 -1.5" rotation="0 35 0">
-            <!-- Sfondo HUD -->
             <a-plane width="1.3" height="1.6" color="#161b22" opacity="0.9" material="shader: flat; transparent: true"></a-plane>
             
-            <!-- Testi e Informazioni di Stato -->
             <a-text value="CALIBRAZIONE ARMI" position="-0.55 0.65 0.01" width="1.8" color="#ff3366"></a-text>
             <a-text id="hud-status" value="STATO: PRONTO" position="-0.55 0.4 0.01" width="1.6" color="#ffffff"></a-text>
             <a-text id="hud-tilt" value="INCLINAZIONE X: 0°" position="-0.55 0.2 0.01" width="1.5" color="#00ffcc"></a-text>
-            <a-text value="Versione: v1.4.0" position="-0.55 0 0.01" width="1.4" color="#888888"></a-text>
+            <a-text value="Versione: v1.5.0" position="-0.55 0 0.01" width="1.4" color="#888888"></a-text>
 
-            <!-- Pulsanti interattivi per regolare l'inclinazione della pistola -->
             <a-box id="btn-tilt-up" class="clickable" position="-0.3 -0.2 0.02" width="0.4" height="0.2" depth="0.05" color="#333344">
                 <a-text value="TILT +" position="-0.15 0 0.03" width="1.2" color="#ffffff"></a-text>
             </a-box>
@@ -120,7 +118,6 @@
                 <a-text value="TILT -" position="-0.15 0 0.03" width="1.2" color="#ffffff"></a-text>
             </a-box>
 
-            <!-- Pulsante Principale Start / Lobby -->
             <a-box id="action-btn" class="clickable" position="0 -0.55 0.02" width="1.0" height="0.25" depth="0.05" color="#ff3366">
                 <a-text id="action-btn-text" value="AVVIA GIOCO" position="-0.35 0 0.04" width="1.8" color="#ffffff"></a-text>
             </a-box>
@@ -128,11 +125,12 @@
 
     </a-scene>
 
-    <!-- Script di Logica, Calibrazione e Controllo Sessione -->
+    <!-- Script di Logica, Gestione AR/VR e Calibrazione -->
     <script>
         const sceneEl = document.querySelector('a-scene');
         const btnVr = document.getElementById('btn-vr');
         const btnAr = document.getElementById('btn-ar');
+        const sceneSky = document.getElementById('scene-sky');
         
         const hudStatus = document.getElementById('hud-status');
         const hudTilt = document.getElementById('hud-tilt');
@@ -145,9 +143,20 @@
         let isGameStarted = false;
         let currentTiltX = 0;
 
-        // Gestione pulsanti browser per avvio AR/VR
+        // Gestione pulsanti browser per avvio VR / AR
         btnVr.addEventListener('click', () => { if (sceneEl.hasLoaded) sceneEl.enterVR(); });
         btnAr.addEventListener('click', () => { if (sceneEl.hasLoaded) sceneEl.enterAR(); });
+
+        // FIX SCHERMO NERO AR: Nasconde la skybox quando entra in AR e la ripristina all'uscita
+        sceneEl.addEventListener('enter-ar', () => {
+            sceneSky.setAttribute('visible', 'false');
+            console.log("[WebXR] Entrato in AR: Skybox disattivata per il passthrough.");
+        });
+
+        sceneEl.addEventListener('exit-ar', () => {
+            sceneSky.setAttribute('visible', 'true');
+            console.log("[WebXR] Uscito da AR: Skybox ripristinata.");
+        });
 
         // Gestione Calibrazione Inclinazione Pistola (Asse X)
         btnTiltUp.addEventListener('click', () => {
@@ -163,7 +172,6 @@
         function updateBerettaRotation() {
             berettaEntity.setAttribute('rotation', `${currentTiltX} 0 0`);
             hudTilt.setAttribute('value', `INCLINAZIONE X: ${currentTiltX}°`);
-            console.log(`[Calibrazione] Inclinazione pistola aggiornata a: ${currentTiltX}°`);
         }
 
         // Gestione Stato Gioco / Lobby tramite HUD
@@ -174,12 +182,10 @@
                 hudStatus.setAttribute('value', 'STATO: IN GIOCO');
                 actionBtn.setAttribute('color', '#333333');
                 actionBtnText.setAttribute('value', 'TORNA LOBBY');
-                console.log("[Game] Partita avviata all'interno del cabinato.");
             } else {
                 hudStatus.setAttribute('value', 'STATO: PRONTO');
                 actionBtn.setAttribute('color', '#ff3366');
                 actionBtnText.setAttribute('value', 'AVVIA GIOCO');
-                console.log("[Game] Rientrato nella schermata di lobby.");
             }
         });
     </script>
