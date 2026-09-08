@@ -8,8 +8,8 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
 
-  <meta name="game-version" content="0.3.0">
-  <title>WebXR 60s Zombie Arcade - Shooting Gallery v0.3.0</title>
+  <meta name="game-version" content="0.4.0">
+  <title>WebXR 60s Zombie Arcade - Vintage Lighting v0.4.0</title>
 
   <!-- A-Frame v1.6.0 -->
   <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
@@ -67,173 +67,79 @@
   </style>
 
   <script>
-    // System di Gestione Punteggio e Stato Gioco
-    AFRAME.registerSystem('game-manager', {
+    // Componente per la gestione delle 3 luci spot instabili a bianco caldo
+    AFRAME.registerComponent('vintage-cabinet-lights', {
       init: function () {
-        this.score = 0;
-        this.shots = 0;
-        this.hits = 0;
+        const scene = this.el.sceneEl.object3D;
+        const WARM_WHITE = 0xfff1e0;
+
+        // 1. Target Posizionali
+        this.targetRightFront = new THREE.Object3D();
+        this.targetRightFront.position.set(0.5, 0.8, -1.8);
+        scene.add(this.targetRightFront);
+
+        this.targetLeftFront = new THREE.Object3D();
+        this.targetLeftFront.position.set(-0.5, 0.8, -1.8);
+        scene.add(this.targetLeftFront);
+
+        this.targetBackground = new THREE.Object3D();
+        this.targetBackground.position.set(0.0, 1.0, -2.6);
+        scene.add(this.targetBackground);
+
+        // 2. Creazione SpotLight 1: Alto Sinistra Davanti -> Punta a Davanti Destra
+        this.spot1 = new THREE.SpotLight(WARM_WHITE, 3.5, 10, Math.PI / 4, 0.4);
+        this.spot1.position.set(-0.7, 2.2, -1.1);
+        this.spot1.target = this.targetRightFront;
+        this.spot1.castShadow = true;
+        scene.add(this.spot1);
+
+        // 3. Creazione SpotLight 2: Alto Destra Davanti -> Punta a Davanti Sinistra
+        this.spot2 = new THREE.SpotLight(WARM_WHITE, 3.5, 10, Math.PI / 4, 0.4);
+        this.spot2.position.set(0.7, 2.2, -1.1);
+        this.spot2.target = this.targetLeftFront;
+        this.spot2.castShadow = true;
+        scene.add(this.spot2);
+
+        // 4. Creazione SpotLight 3: Centrale -> Punta allo Sfondo
+        this.spot3 = new THREE.SpotLight(WARM_WHITE, 4.5, 12, Math.PI / 3, 0.5);
+        this.spot3.position.set(0.0, 2.2, -1.4);
+        this.spot3.target = this.targetBackground;
+        this.spot3.castShadow = true;
+        scene.add(this.spot3);
+
+        this.baseIntensities = { spot1: 3.5, spot2: 3.5, spot3: 4.5 };
       },
 
-      registerShot: function (hitSuccess) {
-        this.shots++;
-        if (hitSuccess) {
-          this.hits++;
-          this.score += 100;
-        }
-        this.updateHUD();
-      },
+      tick: function (time) {
+        const t = time * 0.001;
 
-      updateHUD: function () {
-        const hudText = document.getElementById('hud-score-text');
-        if (hudText) {
-          const acc = this.shots > 0 ? Math.round((this.hits / this.shots) * 100) : 0;
-          hudText.setAttribute('value', `PUNTI: ${this.score}\nCOLPI: ${this.shots}\nPRECISIONE: ${acc}%`);
-        }
-      }
-    });
+        // Helper per simulare sfarfallio elettrico instabile
+        const getUnstableFlicker = (baseIntensity, timeOffset) => {
+          const fastOscillation = Math.sin(t * 18 + timeOffset) * 0.2;
+          const noise = (Math.random() - 0.5) * 0.35;
+          const microDrop = Math.random() < 0.06 ? 0.15 : 1.0; // Calo di tensione improvviso nel 6% dei frame
+          
+          return Math.max(0, (baseIntensity + fastOscillation + noise) * microDrop);
+        };
 
-    // Componente per l'animazione e la logica del Bersaglio
-    AFRAME.registerComponent('target-behavior', {
-      schema: {
-        speed: { type: 'number', default: 1.5 },
-        minX: { type: 'number', default: -2.5 },
-        maxX: { type: 'number', default: 2.5 }
-      },
-
-      init: function () {
-        this.direction = Math.random() < 0.5 ? 1 : -1;
-        this.isHit = false;
-        this.el.classList.add('target', 'clickable');
-      },
-
-      tick: function (time, timeDelta) {
-        if (this.isHit) return;
-
-        const deltaSec = timeDelta * 0.001;
-        let pos = this.el.getAttribute('position');
-        pos.x += this.data.speed * this.direction * deltaSec;
-
-        if (pos.x >= this.data.maxX) {
-          pos.x = this.data.maxX;
-          this.direction = -1;
-        } else if (pos.x <= this.data.minX) {
-          pos.x = this.data.minX;
-          this.direction = 1;
-        }
-
-        this.el.setAttribute('position', pos);
-      },
-
-      onHit: function () {
-        if (this.isHit) return;
-        this.isHit = true;
-
-        // Feedback visivo del colpo
-        const mat = this.el.getAttribute('material') || {};
-        const originalColor = mat.color || '#ff0000';
-        this.el.setAttribute('material', 'color', '#ffff00');
-
-        setTimeout(() => {
-          this.respawn(originalColor);
-        }, 300);
-      },
-
-      respawn: function (originalColor) {
-        const randomX = Math.random() * (this.data.maxX - this.data.minX) + this.data.minX;
-        const randomY = 1.2 + Math.random() * 0.8;
-        this.el.setAttribute('position', `${randomX} ${randomY} -2.5`);
-        this.el.setAttribute('material', 'color', originalColor);
-        this.isHit = false;
+        if (this.spot1) this.spot1.intensity = getUnstableFlicker(this.baseIntensities.spot1, 0.0);
+        if (this.spot2) this.spot2.intensity = getUnstableFlicker(this.baseIntensities.spot2, 3.14);
+        if (this.spot3) this.spot3.intensity = getUnstableFlicker(this.baseIntensities.spot3, 1.57);
       }
     });
 
     // Componente Canna/Pistola per la gestione dello Sparo
     AFRAME.registerComponent('gun-shooter', {
       init: function () {
-        this.raycaster = null;
-
-        // Event listener per grilletto VR e click/tap
         this.el.addEventListener('triggerdown', this.shoot.bind(this));
         window.addEventListener('click', this.shoot.bind(this));
       },
 
       shoot: function () {
-        const gameManager = this.el.sceneEl.systems['game-manager'];
-        const laserEl = document.getElementById('gun-laser');
-
-        if (!laserEl) return;
-        const raycasterComp = laserEl.components.raycaster;
-        if (!raycasterComp) return;
-
-        const intersections = raycasterComp.intersections;
-
-        // Recoil visivo dell'arma
         const berettaModel = document.getElementById('beretta-model');
         if (berettaModel) {
           berettaModel.setAttribute('position', '0 -0.03 -0.02');
           setTimeout(() => berettaModel.setAttribute('position', '0 -0.03 -0.05'), 80);
-        }
-
-        if (intersections.length > 0) {
-          const hitObject = intersections[0].object.el;
-          if (hitObject && hitObject.components['target-behavior']) {
-            hitObject.components['target-behavior'].onHit();
-            gameManager.registerShot(true);
-            return;
-          }
-        }
-
-        gameManager.registerShot(false);
-      }
-    });
-
-    // Componente gestione illuminazione dinamica del cabinato
-    AFRAME.registerComponent('cabinet-lighting', {
-      init: function () {
-        this.spot1 = null;
-        this.spot2 = null;
-        this.spot3 = null;
-        this.baseIntensities = { spot1: 2.0, spot2: 2.0, spot3: 2.5 };
-
-        this.el.addEventListener('model-loaded', () => {
-          const mesh = this.el.getObject3D('mesh');
-          if (!mesh) return;
-
-          mesh.traverse((node) => {
-            if (node.isLight || (node.type && node.type.includes('Light'))) {
-              const name = node.name || '';
-              if (name.includes('SpotLight1')) {
-                this.spot1 = node;
-                this.spot1.color.setHex(0xfff1e0);
-                if (node.intensity) this.baseIntensities.spot1 = node.intensity;
-              } else if (name.includes('SpotLight2')) {
-                this.spot2 = node;
-                this.spot2.color.setHex(0xfff1e0);
-                if (node.intensity) this.baseIntensities.spot2 = node.intensity;
-              } else if (name.includes('SpotLight3')) {
-                this.spot3 = node;
-                this.spot3.color.setHex(0x0055ff);
-                if (node.intensity) this.baseIntensities.spot3 = node.intensity;
-              }
-            }
-          });
-        });
-      },
-
-      tick: function (time) {
-        const t = time * 0.001;
-
-        if (this.spot1) {
-          this.spot1.intensity = this.baseIntensities.spot1 * (0.75 + 0.25 * Math.sin(t * 1.5));
-        }
-        if (this.spot2) {
-          this.spot2.intensity = this.baseIntensities.spot2 * (0.75 + 0.25 * Math.sin(t * 1.5 + 0.8));
-        }
-        if (this.spot3) {
-          const flickerNoise = Math.random() * 0.45;
-          const microDrop = Math.random() < 0.08 ? 0.2 : 1.0;
-          this.spot3.intensity = this.baseIntensities.spot3 * (0.65 + flickerNoise) * microDrop;
         }
       }
     });
@@ -242,7 +148,7 @@
 <body>
 
   <div id="version-overlay">
-    SHOOTING GALLERY ZOMBIE - <span id="version-text">v0.3.0</span>
+    CABINATO ZOMBIE 1960s - <span id="version-text">v0.4.0</span>
   </div>
 
   <div id="xr-controls">
@@ -254,11 +160,12 @@
     embedded 
     background="transparent: true"
     webxr="referenceSpaceType: local-floor; requiredFeatures: local-floor; optionalFeatures: hit-test, dom-overlay; overlayElement: #version-overlay"
-    vr-mode-ui="enabled: false">
+    vr-mode-ui="enabled: false"
+    vintage-cabinet-lights>
 
     <a-assets>
-      <a-asset-item id="cabinato-glb" src="Cabinato.glb?v=0.3.0"></a-asset-item>
-      <a-asset-item id="beretta-glb" src="Beretta.glb?v=0.3.0"></a-asset-item>
+      <a-asset-item id="cabinato-glb" src="Cabinato.glb?v=0.4.0"></a-asset-item>
+      <a-asset-item id="beretta-glb" src="Beretta.glb?v=0.4.0"></a-asset-item>
     </a-assets>
 
     <!-- RIG GIOCATORE -->
@@ -270,7 +177,7 @@
       <!-- Controller Sinistro -->
       <a-entity id="left-controller" laser-controls="hand: left; model: true" raycaster="objects: .clickable; far: 5"></a-entity>
 
-      <!-- Controller Destro con Arma e Raycaster di Tiro -->
+      <!-- Controller Destro con Arma -->
       <a-entity id="right-controller" laser-controls="hand: right; model: false" gun-shooter>
         <a-entity id="beretta-model" 
                   gltf-model="#beretta-glb" 
@@ -278,7 +185,7 @@
                   rotation="-75 -10 2" 
                   scale="1 1 1">
           <a-entity id="gun-laser" 
-                    raycaster="objects: .target, .clickable; far: 12; showLine: true; origin: 0 0 0; direction: 0 0 -1" 
+                    raycaster="objects: .clickable; far: 12; showLine: true; origin: 0 0 0; direction: 0 0 -1" 
                     line="color: #ff0000; opacity: 0.85">
           </a-entity>
         </a-entity>
@@ -289,9 +196,9 @@
     <a-entity id="hud-debug-panel" position="-1.4 1.35 -1.1" rotation="0 35 0">
       <a-plane width="1.1" height="1.0" color="#0f172a" material="opacity: 0.92; transparent: true; shader: flat"></a-plane>
       
-      <a-text value="TIRO A SEGNO" position="-0.48 0.38 0.01" scale="0.32 0.32 0.32" color="#38bdf8" font="monoid"></a-text>
+      <a-text value="INFO AMBIENTE" position="-0.48 0.38 0.01" scale="0.32 0.32 0.32" color="#38bdf8" font="monoid"></a-text>
       
-      <a-text id="hud-score-text" value="PUNTI: 0\nCOLPI: 0\nPRECISIONE: 0%" position="-0.48 0.18 0.01" scale="0.22 0.22 0.22" color="#00ffcc"></a-text>
+      <a-text value="ILLUMINAZIONE VINTAGE:\n- Spot Sinistra -> Front Right\n- Spot Destra -> Front Left\n- Spot Centro -> Sfondo" position="-0.48 0.15 0.01" scale="0.19 0.19 0.19" color="#00ffcc"></a-text>
 
       <a-box id="btn-hud-toggle" class="clickable" position="0 -0.15 0.03" width="0.85" height="0.12" depth="0.02" color="#0d9488">
         <a-text value="TOGGLE PAVIMENTO" align="center" position="0 0 0.02" scale="0.18 0.18 0.18" color="#ffffff"></a-text>
@@ -300,30 +207,21 @@
       <a-text id="hud-telemetry" value="Sessione: Standby | Modo: Desktop 2D" position="-0.48 -0.35 0.01" scale="0.18 0.18 0.18" color="#94a3b8"></a-text>
     </a-entity>
 
-    <!-- ZONA BERSAGLI MOBILE (Poligono di Tiro) -->
-    <a-entity id="shooting-range" position="0 0 0">
-      
-      <!-- Bersagli Sagoma -->
-      <a-cylinder id="target-1" target-behavior="speed: 1.2; minX: -2.0; maxX: 2.0" position="-1.5 1.5 -2.5" rotation="0 0 0" radius="0.25" height="0.05" color="#ef4444"></a-cylinder>
-      <a-cylinder id="target-2" target-behavior="speed: 2.0; minX: -2.2; maxX: 2.2" position="0.5 1.8 -2.5" rotation="0 0 0" radius="0.2" height="0.05" color="#f59e0b"></a-cylinder>
-      <a-cylinder id="target-3" target-behavior="speed: 1.6; minX: -1.8; maxX: 1.8" position="1.2 1.3 -2.5" rotation="0 0 0" radius="0.22" height="0.05" color="#10b981"></a-cylinder>
-
+    <!-- SCENA CENTRALE -->
+    <a-entity id="scene-center" position="0 0 0">
       <a-grid id="floor-grid" position="0 0 0" width="8" height="8" color-center="#38bdf8" color-grid="#1e293b"></a-grid>
       
       <!-- CABINATO ARCADE -->
       <a-entity id="arcade-cabinet" 
                 gltf-model="#cabinato-glb" 
-                cabinet-lighting
                 position="0 0 -1.8" 
                 rotation="0 0 0" 
-                scale="1 1 1"
-                class="clickable">
+                scale="1 1 1">
       </a-entity>
     </a-entity>
 
-    <!-- Luce Scena -->
-    <a-light type="ambient" color="#ffffff" intensity="0.4"></a-light>
-    <a-light type="directional" position="2 4 2" intensity="0.3"></a-light>
+    <!-- Luce Ambientale Soft per non scurire troppo le ombre aperte -->
+    <a-light type="ambient" color="#111827" intensity="0.6"></a-light>
 
   </a-scene>
 
