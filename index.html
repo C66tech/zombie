@@ -3,269 +3,86 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Zombie Electro-Arcade Simulator - v0.1.1</title>
+    <title>WebXR Three.js - Spot Lights Blu</title>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { 
-            font-family: 'Courier New', Courier, monospace; 
-            background-color: #0d0d11; 
-            color: #00ffcc; 
-            overflow: hidden; 
-        }
-        canvas { display: block; }
-
-        /* UI Overlay di partenza */
-        #overlay {
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            display: flex; flex-direction: column;
-            justify-content: center; align-items: center;
-            background: rgba(10, 10, 15, 0.95);
-            z-index: 10;
-        }
-        h1 { font-size: 2.2rem; text-shadow: 0 0 10px #00ffcc; margin-bottom: 5px; text-align: center; }
-        .version-badge {
-            background: #1a1a24; color: #ff0055; 
-            padding: 4px 12px; border-radius: 4px;
-            font-weight: bold; border: 1px solid #ff0055; margin-bottom: 20px;
-        }
-        .btn-container { display: flex; gap: 20px; }
-        .xr-btn {
-            background: transparent; color: #00ffcc;
-            border: 2px solid #00ffcc; padding: 15px 30px;
-            font-size: 1.2rem; font-weight: bold; cursor: pointer;
-            box-shadow: 0 0 10px rgba(0,255,204,0.2);
-            transition: all 0.2s ease;
-        }
-        .xr-btn:hover {
-            background: #00ffcc; color: #000;
-            box-shadow: 0 0 20px rgba(0,255,204,0.8);
-        }
-        .xr-btn:disabled { border-color: #444; color: #444; cursor: not-allowed; box-shadow: none; }
-        #error-msg { color: #ff0055; margin-top: 15px; font-weight: bold; max-width: 80%; text-align: center; }
+        body { margin: 0; overflow: hidden; background-color: #000; }
     </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/vr/VRButton.js"></script>
 </head>
 <body>
-
-    <!-- Overlay iniziale 2D -->
-    <div id="overlay">
-        <h1>ZOMBIE ELECTRO-ARCADIA</h1>
-        <div class="version-badge">VERSION v0.1.1</div>
-        <div class="btn-container">
-            <button id="btn-vr" class="xr-btn" disabled>AVVIA VR</button>
-            <button id="btn-ar" class="xr-btn" disabled>AVVIA AR</button>
-        </div>
-        <div id="error-msg"></div>
-    </div>
-
-    <script type="importmap">
-        {
-            "imports": {
-                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
-            }
-        }
-    </script>
-
-    <script type="module">
-        import * as THREE from 'three';
-        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-
-        const GAME_VERSION = "v0.1.1";
-
-        // 1. SCENA, CAMERA E RENDERER (ALPHA ATTIVO PER PASSTHROUGH AR)
+    <script>
         const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
-        camera.position.set(0, 1.6, 0);
 
-        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        // Configurazione Camera dal JSON
+        const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.001, 1000);
+        camera.position.set(0.9938, 2.4048, 4.7705);
+
+        // Configurazione Renderer (Shadows & ToneMapping dal JSON)
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setPixelRatio(window.devicePixelRatio);
         renderer.shadowMap.enabled = true;
         renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.0;
         renderer.xr.enabled = true;
+        
         document.body.appendChild(renderer.domElement);
+        document.body.appendChild(VRButton.createButton(renderer));
 
-        // 2. ILLUMINAZIONE BASE
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
-        scene.add(ambientLight);
+        // Target delle luci (centro dei controlli del JSON)
+        const targetObject = new THREE.Object3D();
+        targetObject.position.set(0.4631, 1.9743, 0.5471);
+        scene.add(targetObject);
 
-        const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
-        dirLight.position.set(3, 8, 5);
-        dirLight.castShadow = true;
-        scene.add(dirLight);
+        // Funzione generazione SpotLight Blu
+        const spotColor = 0x0066ff;
 
-        // 3. CARICAMENTO MODELLI GLB
-        const loader = new GLTFLoader();
+        function createBlueSpotLight(x, y, z, intensity, angle, penumbra) {
+            const spotLight = new THREE.SpotLight(spotColor, intensity);
+            spotLight.position.set(x, y, z);
+            spotLight.target = targetObject;
+            spotLight.angle = angle;
+            spotLight.penumbra = penumbra;
+            spotLight.castShadow = true;
+            spotLight.shadow.mapSize.width = 1024;
+            spotLight.shadow.mapSize.height = 1024;
+            spotLight.shadow.camera.near = 0.5;
+            spotLight.shadow.camera.far = 15;
+            return spotLight;
+        }
 
-        loader.load('Cabinato.glb', 
-            (gltf) => {
-                const cabinet = gltf.scene;
-                cabinet.position.set(0, 0, -1.2);
-                cabinet.traverse(c => { if(c.isMesh) c.castShadow = c.receiveShadow = true; });
-                scene.add(cabinet);
-                updateHudText("Cabinato.glb: OK");
-            },
-            undefined,
-            () => console.warn('File Cabinato.glb non trovato in root.')
+        // Generazione diretta delle 3 luci spot
+        const spot1 = createBlueSpotLight(-2.0, 4.0, 3.0, 10, Math.PI / 6, 0.3);
+        const spot2 = createBlueSpotLight(3.0, 3.5, 2.0, 8, Math.PI / 5, 0.5);
+        const spot3 = createBlueSpotLight(0.0, 5.0, -2.0, 12, Math.PI / 6, 0.4);
+
+        scene.add(spot1);
+        scene.add(spot2);
+        scene.add(spot3);
+
+        // Elementi di test per la resa visiva delle ombre
+        const floor = new THREE.Mesh(
+            new THREE.PlaneGeometry(10, 10),
+            new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.8 })
         );
+        floor.rotation.x = -Math.PI / 2;
+        floor.position.set(0.4631, 0, 0.5471);
+        floor.receiveShadow = true;
+        scene.add(floor);
 
-        // 4. CONTROLLER DESTRO, BERETTA E RAGGIO RAYCASTING
-        const rightController = renderer.xr.getController(1);
-        scene.add(rightController);
-
-        let berettaMesh = null;
-        loader.load('Beretta.glb', 
-            (gltf) => {
-                berettaMesh = gltf.scene;
-                berettaMesh.traverse(c => { if(c.isMesh) c.castShadow = true; });
-                rightController.add(berettaMesh);
-                updateHudText("Beretta.glb: OK");
-            },
-            undefined,
-            () => console.warn('File Beretta.glb non trovato in root.')
+        const cube = new THREE.Mesh(
+            new THREE.BoxGeometry(0.8, 0.8, 0.8),
+            new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2 })
         );
+        cube.position.set(0.4631, 1.9743, 0.5471);
+        cube.castShadow = true;
+        cube.receiveShadow = true;
+        scene.add(cube);
 
-        // Raggio Laser visuale
-        const rayGeometry = new THREE.BufferGeometry().setFromPoints([
-            new THREE.Vector3(0, 0, 0),
-            new THREE.Vector3(0, 0, -5)
-        ]);
-        const rayMaterial = new THREE.LineBasicMaterial({ color: 0xff0055, linewidth: 2 });
-        const rayLine = new THREE.Line(rayGeometry, rayMaterial);
-        rightController.add(rayLine);
-
-        const raycaster = new THREE.Raycaster();
-        const tempMatrix = new THREE.Matrix4();
-
-        rightController.addEventListener('selectstart', () => {
-            tempMatrix.identity().extractRotation(rightController.matrixWorld);
-            raycaster.ray.origin.setFromMatrixPosition(rightController.matrixWorld);
-            raycaster.ray.direction.set(0, 0, -1).applyMatrix4(tempMatrix);
-            updateHudText("Sparo Eseguito!");
-        });
-
-        // 5. HUD 3D (POSIZIONATO A SINISTRA)
-        const hudCanvas = document.createElement('canvas');
-        hudCanvas.width = 512;
-        hudCanvas.height = 512;
-        const hudCtx = hudCanvas.getContext('2d');
-
-        const hudTexture = new THREE.CanvasTexture(hudCanvas);
-        const hudGeo = new THREE.PlaneGeometry(0.8, 0.8);
-        const hudMat = new THREE.MeshBasicMaterial({ map: hudTexture, transparent: true, side: THREE.DoubleSide });
-        const hudMesh = new THREE.Mesh(hudGeo, hudMat);
-
-        hudMesh.position.set(-1.2, 1.4, -1.0);
-        hudMesh.rotation.y = Math.PI / 6;
-        scene.add(hudMesh);
-
-        let hudLogs = ["System Initialized"];
-
-        function renderHud() {
-            hudCtx.clearRect(0, 0, 512, 512);
-            hudCtx.fillStyle = "rgba(10, 15, 25, 0.85)";
-            hudCtx.strokeStyle = "#00ffcc";
-            hudCtx.lineWidth = 6;
-            hudCtx.fillRect(0, 0, 512, 512);
-            hudCtx.strokeRect(0, 0, 512, 512);
-
-            hudCtx.fillStyle = "#ff0055";
-            hudCtx.font = "bold 28px monospace";
-            hudCtx.fillText(`HUD DEBUG - ${GAME_VERSION}`, 30, 50);
-
-            hudCtx.fillStyle = "#00ffcc";
-            hudCtx.font = "20px monospace";
-            hudCtx.fillText("Status: READY", 30, 90);
-            hudCtx.fillText("Floor (Y=0): local-floor", 30, 120);
-
-            hudCtx.fillStyle = "#ffffff";
-            hudCtx.font = "18px monospace";
-            hudCtx.fillText("LOGS:", 30, 170);
-            
-            hudLogs.slice(-8).forEach((log, i) => {
-                hudCtx.fillText(`> ${log}`, 30, 205 + (i * 30));
-            });
-
-            hudTexture.needsUpdate = true;
-        }
-
-        function updateHudText(msg) {
-            hudLogs.push(msg);
-            renderHud();
-        }
-        renderHud();
-
-        // 6. GESTIONE SESSIONI WEBXR ROBUSTA (AR / VR)
-        const btnVR = document.getElementById('btn-vr');
-        const btnAR = document.getElementById('btn-ar');
-        const overlay = document.getElementById('overlay');
-        const errorMsg = document.getElementById('error-msg');
-
-        async function checkXRSupport() {
-            if (!window.isSecureContext) {
-                errorMsg.innerText = "ERRORE: WebXR richiede HTTPS o localhost per funzionare.";
-                return;
-            }
-
-            if ('xr' in navigator) {
-                try {
-                    const vrSupported = await navigator.xr.isSessionSupported('immersive-vr');
-                    const arSupported = await navigator.xr.isSessionSupported('immersive-ar');
-
-                    btnVR.disabled = !vrSupported;
-                    btnAR.disabled = !arSupported;
-
-                    if (!arSupported && !vrSupported) {
-                        errorMsg.innerText = "Nessuna sessione XR supportata su questo visore/browser.";
-                    }
-                } catch (e) {
-                    errorMsg.innerText = "Errore durante la verifica WebXR: " + e.message;
-                }
-            } else {
-                errorMsg.innerText = "WebXR non supportato da questo browser.";
-            }
-        }
-        checkXRSupport();
-
-        async function startXRSession(mode) {
-            try {
-                // In AR rimuoviamo lo sfondo della scena per mostrare le telecamere del visore (Passthrough)
-                if (mode === 'immersive-ar') {
-                    scene.background = null;
-                } else {
-                    scene.background = new THREE.Color(0x050508);
-                }
-
-                // Passiamo local-floor come opzionale per evitare fallimenti rigidi di handshake
-                const sessionInit = { 
-                    optionalFeatures: ['local-floor', 'bounded-floor'] 
-                };
-
-                const session = await navigator.xr.requestSession(mode, sessionInit);
-                
-                renderer.xr.setReferenceSpaceType('local-floor');
-                await renderer.xr.setSession(session);
-                
-                overlay.style.display = 'none';
-                updateHudText(`Session: ${mode.toUpperCase()}`);
-
-                session.addEventListener('end', () => {
-                    overlay.style.display = 'flex';
-                    updateHudText('Session Ended');
-                });
-
-            } catch (err) {
-                console.error("Errore avvio XR:", err);
-                errorMsg.innerText = `Errore avvio ${mode.toUpperCase()}: ${err.message}`;
-            }
-        }
-
-        btnVR.addEventListener('click', () => startXRSession('immersive-vr'));
-        btnAR.addEventListener('click', () => startXRSession('immersive-ar'));
-
-        // 7. LOOP DI RENDERING
+        // Loop di Rendering WebXR
         renderer.setAnimationLoop(() => {
+            cube.rotation.y += 0.01;
             renderer.render(scene, camera);
         });
 
