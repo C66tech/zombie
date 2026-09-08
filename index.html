@@ -3,163 +3,267 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Arcade 3D - Calibration SpotLights</title>
+
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+
+  <meta name="game-version" content="0.4.0">
+  <title>WebXR 60s Zombie Arcade - Vintage Lighting v0.4.0</title>
+
+  <!-- A-Frame v1.6.0 -->
+  <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+
   <style>
-    body { margin: 0; overflow: hidden; background-color: #050505; font-family: sans-serif; }
-    canvas { display: block; }
-    #ui {
+    body {
+      margin: 0;
+      overflow: hidden;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #000000;
+    }
+
+    #version-overlay {
       position: absolute;
-      top: 10px;
-      left: 10px;
-      color: #fff;
-      background: rgba(0,0,0,0.7);
-      padding: 12px;
+      top: 16px;
+      left: 16px;
+      z-index: 9999;
+      background: rgba(0, 0, 0, 0.85);
+      color: #00ffcc;
+      padding: 8px 14px;
       border-radius: 6px;
-      font-size: 13px;
-      line-height: 1.5;
+      font-weight: bold;
+      font-size: 14px;
+      border: 1px solid rgba(0, 255, 204, 0.4);
+      pointer-events: none;
+    }
+
+    #xr-controls {
+      position: absolute;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 9999;
+      display: flex;
+      gap: 12px;
+    }
+
+    .xr-button {
+      background: #111827;
+      color: #ffffff;
+      border: 2px solid #3b82f6;
+      padding: 12px 24px;
+      font-size: 16px;
+      font-weight: 600;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .xr-button:hover {
+      background: #3b82f6;
+      color: #ffffff;
+      box-shadow: 0 0 12px rgba(59, 130, 246, 0.5);
     }
   </style>
+
+  <script>
+    // Componente per la gestione delle 3 luci spot instabili a bianco caldo
+    AFRAME.registerComponent('vintage-cabinet-lights', {
+      init: function () {
+        const scene = this.el.sceneEl.object3D;
+        const WARM_WHITE = 0xfff1e0;
+
+        // 1. Target Posizionali
+        this.targetRightFront = new THREE.Object3D();
+        this.targetRightFront.position.set(0.5, 0.8, -1.8);
+        scene.add(this.targetRightFront);
+
+        this.targetLeftFront = new THREE.Object3D();
+        this.targetLeftFront.position.set(-0.5, 0.8, -1.8);
+        scene.add(this.targetLeftFront);
+
+        this.targetBackground = new THREE.Object3D();
+        this.targetBackground.position.set(0.0, 1.0, -2.6);
+        scene.add(this.targetBackground);
+
+        // 2. Creazione SpotLight 1: Alto Sinistra Davanti -> Punta a Davanti Destra
+        this.spot1 = new THREE.SpotLight(WARM_WHITE, 3.5, 10, Math.PI / 4, 0.4);
+        this.spot1.position.set(-0.7, 2.2, -1.1);
+        this.spot1.target = this.targetRightFront;
+        this.spot1.castShadow = true;
+        scene.add(this.spot1);
+
+        // 3. Creazione SpotLight 2: Alto Destra Davanti -> Punta a Davanti Sinistra
+        this.spot2 = new THREE.SpotLight(WARM_WHITE, 3.5, 10, Math.PI / 4, 0.4);
+        this.spot2.position.set(0.7, 2.2, -1.1);
+        this.spot2.target = this.targetLeftFront;
+        this.spot2.castShadow = true;
+        scene.add(this.spot2);
+
+        // 4. Creazione SpotLight 3: Centrale -> Punta allo Sfondo
+        this.spot3 = new THREE.SpotLight(WARM_WHITE, 4.5, 12, Math.PI / 3, 0.5);
+        this.spot3.position.set(0.0, 2.2, -1.4);
+        this.spot3.target = this.targetBackground;
+        this.spot3.castShadow = true;
+        scene.add(this.spot3);
+
+        this.baseIntensities = { spot1: 3.5, spot2: 3.5, spot3: 4.5 };
+      },
+
+      tick: function (time) {
+        const t = time * 0.001;
+
+        // Helper per simulare sfarfallio elettrico instabile
+        const getUnstableFlicker = (baseIntensity, timeOffset) => {
+          const fastOscillation = Math.sin(t * 18 + timeOffset) * 0.2;
+          const noise = (Math.random() - 0.5) * 0.35;
+          const microDrop = Math.random() < 0.06 ? 0.15 : 1.0; // Calo di tensione improvviso nel 6% dei frame
+          
+          return Math.max(0, (baseIntensity + fastOscillation + noise) * microDrop);
+        };
+
+        if (this.spot1) this.spot1.intensity = getUnstableFlicker(this.baseIntensities.spot1, 0.0);
+        if (this.spot2) this.spot2.intensity = getUnstableFlicker(this.baseIntensities.spot2, 3.14);
+        if (this.spot3) this.spot3.intensity = getUnstableFlicker(this.baseIntensities.spot3, 1.57);
+      }
+    });
+
+    // Componente Canna/Pistola per la gestione dello Sparo
+    AFRAME.registerComponent('gun-shooter', {
+      init: function () {
+        this.el.addEventListener('triggerdown', this.shoot.bind(this));
+        window.addEventListener('click', this.shoot.bind(this));
+      },
+
+      shoot: function () {
+        const berettaModel = document.getElementById('beretta-model');
+        if (berettaModel) {
+          berettaModel.setAttribute('position', '0 -0.03 -0.02');
+          setTimeout(() => berettaModel.setAttribute('position', '0 -0.03 -0.05'), 80);
+        }
+      }
+    });
+  </script>
 </head>
 <body>
 
-  <div id="ui">
-    <strong>Calibrazione Faretti Cabinato</strong><br>
-    ⚪ SpotLight 1: Insegna (Marquee)<br>
-    🔵 SpotLight 2: Plancia Comandi<br>
-    🟡 SpotLight 3: Gettoniera
+  <div id="version-overlay">
+    CABINATO ZOMBIE 1960s - <span id="version-text">v0.4.0</span>
   </div>
 
-  <script type="importmap">
-    {
-      "imports": {
-        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
-      }
-    }
-  </script>
+  <div id="xr-controls">
+    <button id="btn-enter-vr" class="xr-button">AVVIA VR</button>
+    <button id="btn-enter-ar" class="xr-button">AVVIA AR</button>
+  </div>
 
-  <script type="module">
-    import * as THREE from 'three';
-    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+  <a-scene 
+    embedded 
+    background="transparent: true"
+    webxr="referenceSpaceType: local-floor; requiredFeatures: local-floor; optionalFeatures: hit-test, dom-overlay; overlayElement: #version-overlay"
+    vr-mode-ui="enabled: false"
+    vintage-cabinet-lights>
 
-    // --- Inizializzazione Scena, Telecamera e Render ---
-    const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x0a0a0c);
+    <a-assets>
+      <a-asset-item id="cabinato-glb" src="Cabinato.glb?v=0.4.0"></a-asset-item>
+      <a-asset-item id="beretta-glb" src="Beretta.glb?v=0.4.0"></a-asset-item>
+    </a-assets>
 
-    const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 100);
-    camera.position.set(0, 1.2, 2.5);
+    <!-- RIG GIOCATORE -->
+    <a-entity id="rig" position="0 0 0">
+      <a-camera id="main-camera" position="0 1.6 0" look-controls>
+        <a-cursor id="gaze-cursor" raycaster="objects: .clickable" color="#00ffcc" scale="0.5 0.5 0.5"></a-cursor>
+      </a-camera>
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    document.body.appendChild(renderer.domElement);
+      <!-- Controller Sinistro -->
+      <a-entity id="left-controller" laser-controls="hand: left; model: true" raycaster="objects: .clickable; far: 5"></a-entity>
 
-    const controls = new OrbitControls(camera, renderer.domElement);
-    controls.target.set(0, 1.1, 0);
-    controls.update();
+      <!-- Controller Destro con Arma -->
+      <a-entity id="right-controller" laser-controls="hand: right; model: false" gun-shooter>
+        <a-entity id="beretta-model" 
+                  gltf-model="#beretta-glb" 
+                  position="0 -0.03 -0.05" 
+                  rotation="-75 -10 2" 
+                  scale="1 1 1">
+          <a-entity id="gun-laser" 
+                    raycaster="objects: .clickable; far: 12; showLine: true; origin: 0 0 0; direction: 0 0 -1" 
+                    line="color: #ff0000; opacity: 0.85">
+          </a-entity>
+        </a-entity>
+      </a-entity>
+    </a-entity>
 
-    // --- Luce Ambientale di fondo ---
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.2);
-    scene.add(ambientLight);
+    <!-- PANNELLO HUD 3D (Sinistra) -->
+    <a-entity id="hud-debug-panel" position="-1.4 1.35 -1.1" rotation="0 35 0">
+      <a-plane width="1.1" height="1.0" color="#0f172a" material="opacity: 0.92; transparent: true; shader: flat"></a-plane>
+      
+      <a-text value="INFO AMBIENTE" position="-0.48 0.38 0.01" scale="0.32 0.32 0.32" color="#38bdf8" font="monoid"></a-text>
+      
+      <a-text value="ILLUMINAZIONE VINTAGE:\n- Spot Sinistra -> Front Right\n- Spot Destra -> Front Left\n- Spot Centro -> Sfondo" position="-0.48 0.15 0.01" scale="0.19 0.19 0.19" color="#00ffcc"></a-text>
 
-    // --- Funzione Creazione SpotLight e Helper ---
-    function setupSpotLight(name, color, intensity, pos, targetPos, angle, penumbra) {
-      const spot = new THREE.SpotLight(color, intensity);
-      spot.name = name;
-      spot.position.set(...pos);
-      spot.angle = angle;
-      spot.penumbra = penumbra;
-      spot.castShadow = true;
+      <a-box id="btn-hud-toggle" class="clickable" position="0 -0.15 0.03" width="0.85" height="0.12" depth="0.02" color="#0d9488">
+        <a-text value="TOGGLE PAVIMENTO" align="center" position="0 0 0.02" scale="0.18 0.18 0.18" color="#ffffff"></a-text>
+      </a-box>
 
-      // Target della luce
-      const targetObject = new THREE.Object3D();
-      targetObject.position.set(...targetPos);
-      scene.add(targetObject);
-      spot.target = targetObject;
+      <a-text id="hud-telemetry" value="Sessione: Standby | Modo: Desktop 2D" position="-0.48 -0.35 0.01" scale="0.18 0.18 0.18" color="#94a3b8"></a-text>
+    </a-entity>
 
-      scene.add(spot);
+    <!-- SCENA CENTRALE -->
+    <a-entity id="scene-center" position="0 0 0">
+      <a-grid id="floor-grid" position="0 0 0" width="8" height="8" color-center="#38bdf8" color-grid="#1e293b"></a-grid>
+      
+      <!-- CABINATO ARCADE -->
+      <a-entity id="arcade-cabinet" 
+                gltf-model="#cabinato-glb" 
+                position="0 0 -1.8" 
+                rotation="0 0 0" 
+                scale="1 1 1">
+      </a-entity>
+    </a-entity>
 
-      // Helper visivo per la calibrazione (cono di luce)
-      const helper = new THREE.SpotLightHelper(spot);
-      scene.add(helper);
+    <!-- Luce Ambientale Soft per non scurire troppo le ombre aperte -->
+    <a-light type="ambient" color="#111827" intensity="0.6"></a-light>
 
-      return { spot, helper };
-    }
+  </a-scene>
 
-    // --- 1. SpotLight Insegna Superiore (Marquee) ---
-    const spot1 = setupSpotLight(
-      'SpotLight1', 
-      0xffffff, 
-      3.0, 
-      [0, 1.85, 0.25], 
-      [0, 1.40, 0.40], 
-      Math.PI / 4, 
-      0.5
-    );
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const sceneEl = document.querySelector("a-scene");
+      const btnVR = document.getElementById("btn-enter-vr");
+      const btnAR = document.getElementById("btn-enter-ar");
+      const hudTelemetry = document.getElementById("hud-telemetry");
+      const floorGrid = document.getElementById("floor-grid");
+      const btnHudToggle = document.getElementById("btn-hud-toggle");
+      const gazeCursor = document.getElementById("gaze-cursor");
 
-    // --- 2. SpotLight Plancia Comandi & Joystick ---
-    const spot2 = setupSpotLight(
-      'SpotLight2', 
-      0x00aaff, 
-      2.0, 
-      [0, 1.35, 0.10], 
-      [0, 1.10, 0.45], 
-      Math.PI / 6, 
-      0.3
-    );
+      btnVR.addEventListener("click", () => sceneEl.enterVR());
 
-    // --- 3. SpotLight Gettoniera (Coin Door) ---
-    const spot3 = setupSpotLight(
-      'SpotLight3', 
-      0xffaa00, 
-      1.5, 
-      [0, 0.70, 0.20], 
-      [0, 0.40, 0.35], 
-      Math.PI / 5, 
-      0.8
-    );
+      btnAR.addEventListener("click", () => {
+        if (typeof sceneEl.enterAR === "function") {
+          sceneEl.enterAR();
+        } else {
+          sceneEl.setAttribute("webxr", "optionalFeatures: hit-test, dom-overlay, local-floor");
+          sceneEl.enterVR();
+        }
+      });
 
-    // --- Struttura Placeholder per riferimento visivo del Cabinato ---
-    const cabinetGroup = new THREE.Group();
-    const mat = new THREE.MeshStandardMaterial({ color: 0x222225, roughness: 0.4 });
+      sceneEl.addEventListener("enter-vr", () => {
+        const isAR = sceneEl.is("ar-mode");
+        const modeText = isAR ? "AR Passthrough" : "VR Immersiva";
+        hudTelemetry.setAttribute("value", `Sessione: Attiva | ${modeText}`);
+        if (gazeCursor) gazeCursor.setAttribute("visible", "false");
+        if (isAR) floorGrid.setAttribute("visible", "false");
+      });
 
-    // Scocca principale
-    const body = new THREE.Mesh(new THREE.BoxGeometry(0.6, 1.7, 0.6), mat);
-    body.position.set(0, 0.85, 0);
-    body.receiveShadow = true;
-    cabinetGroup.add(body);
+      sceneEl.addEventListener("exit-vr", () => {
+        hudTelemetry.setAttribute("value", "Sessione: Inattiva | Modo: Desktop 2D");
+        floorGrid.setAttribute("visible", "true");
+        if (gazeCursor) gazeCursor.setAttribute("visible", "true");
+      });
 
-    // Schermo / Plancia
-    const screen = new THREE.Mesh(
-      new THREE.BoxGeometry(0.5, 0.4, 0.05), 
-      new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.1 })
-    );
-    screen.position.set(0, 1.3, 0.25);
-    screen.rotation.x = -0.2;
-    cabinetGroup.add(screen);
-
-    scene.add(cabinetGroup);
-
-    // --- Loop di Rendering ---
-    function animate() {
-      requestAnimationFrame(animate);
-
-      // Aggiornamento dinamico degli helper
-      spot1.helper.update();
-      spot2.helper.update();
-      spot3.helper.update();
-
-      controls.update();
-      renderer.render(scene, camera);
-    }
-    animate();
-
-    // Gestione Resize Finestra
-    window.addEventListener('resize', () => {
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
+      btnHudToggle.addEventListener("click", () => {
+        const isVisible = floorGrid.getAttribute("visible") !== "false";
+        floorGrid.setAttribute("visible", (!isVisible).toString());
+      });
     });
   </script>
 </body>
