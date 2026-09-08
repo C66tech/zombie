@@ -1,193 +1,252 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Zombie Shooting Gallery - v1.5.0</title>
-    <!-- Importazione di A-Frame -->
-    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
-    <style>
-        body {
-            margin: 0;
-            overflow: hidden;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #121212;
-            color: #ffffff;
-        }
-        #ui-overlay {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            z-index: 1000;
-            background: rgba(0, 0, 0, 0.85);
-            padding: 15px 20px;
-            border-radius: 8px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-            border: 1px solid #444;
-        }
-        h1 {
-            font-size: 1.2rem;
-            margin: 0 0 10px 0;
-            color: #ff3366;
-        }
-        .version-badge {
-            background: #ff3366;
-            color: #fff;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-size: 0.8rem;
-            font-weight: bold;
-        }
-        .btn-group {
-            display: flex;
-            gap: 10px;
-            margin-top: 10px;
-        }
-        button {
-            background-color: #ff3366;
-            color: #ffffff;
-            border: none;
-            padding: 10px 18px;
-            font-weight: bold;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-        button:hover {
-            background-color: #e02e5b;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Versione Gioco nei Meta Dati -->
+  <meta name="game-version" content="0.2.0">
+  <title>WebXR 60s Zombie Arcade - v0.2.0</title>
+
+  <!-- A-Frame v1.6.0 -->
+  <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    /* Badge Versione 2D Overlay */
+    #version-overlay {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      z-index: 9999;
+      background: rgba(0, 0, 0, 0.8);
+      color: #00ffcc;
+      padding: 8px 14px;
+      border-radius: 6px;
+      font-weight: bold;
+      font-size: 14px;
+      border: 1px solid rgba(0, 255, 204, 0.4);
+      pointer-events: none;
+    }
+
+    /* Controller Pulsanti WebXR 2D */
+    #xr-controls {
+      position: absolute;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 9999;
+      display: flex;
+      gap: 12px;
+    }
+
+    .xr-button {
+      background: #111827;
+      color: #ffffff;
+      border: 2px solid #3b82f6;
+      padding: 12px 24px;
+      font-size: 16px;
+      font-weight: 600;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .xr-button:hover {
+      background: #3b82f6;
+      color: #ffffff;
+      box-shadow: 0 0 12px rgba(59, 130, 246, 0.5);
+    }
+  </style>
 </head>
 <body>
 
-    <!-- UI Overlay nel Browser con Pulsanti AR / VR e Versione -->
-    <div id="ui-overlay">
-        <h1>Zombie Gallery XR <span class="version-badge">v1.5.0</span></h1>
-        <p style="margin: 0 0 10px 0; font-size: 0.9rem; color: #aaa;">Seleziona la modalità di immersione:</p>
-        <div class="btn-group">
-            <button id="btn-vr">Entra in VR</button>
-            <button id="btn-ar">Entra in AR</button>
-        </div>
-    </div>
+  <!-- Overlay Versione Visibile a Schermo -->
+  <div id="version-overlay">
+    CABINATO ZOMBIE 1960s - <span id="version-text">v0.2.0</span>
+  </div>
 
-    <!-- Scena A-Frame -->
-    <a-scene embedded vr-mode-ui="enabled: false" ar-mode-ui="enabled: false">
-        
-        <!-- Precaricamento Asset GLB -->
-        <a-assets>
-            <a-asset-item id="cabinato-model" src="cabinato.glb"></a-asset-item>
-            <a-asset-item id="beretta-model" src="beretta.glb"></a-asset-item>
-        </a-assets>
+  <!-- Pulsanti 2D per attivazione VR / AR -->
+  <div id="xr-controls">
+    <button id="btn-enter-vr" class="xr-button">AVVIA VR</button>
+    <button id="btn-enter-ar" class="xr-button">AVVIA AR</button>
+  </div>
 
-        <!-- Camera Rig con supporto nativo local-floor -->
-        <a-entity id="rig" position="0 0 0">
-            <a-entity id="player-camera" camera position="0 1.6 0" look-controls></a-entity>
-            
-            <!-- Controller Sinistro standard -->
-            <a-entity laser-controls="hand: left"></a-entity>
-            
-            <!-- Controller Destro con Beretta e Raggio Laser -->
-            <a-entity id="right-controller" laser-controls="hand: right" raycaster="objects: .clickable; showLine: true; lineColor: #ff3366; lineOpacity: 0.6">
-                <a-entity id="beretta-entity" gltf-model="#beretta-model" position="0 0 0" rotation="0 0 0" scale="1 1 1"></a-entity>
-            </a-entity>
+  <!-- Scena 3D WebXR -->
+  <a-scene 
+    embedded 
+    webxr="referenceSpaceType: local-floor; requiredFeatures: local-floor; optionalFeatures: hit-test, dom-overlay; overlayElement: #version-overlay"
+    vr-mode-ui="enabled: false">
+
+    <!-- Caricamento Asset GLB -->
+    <a-assets>
+      <a-asset-item id="cabinato-glb" src="cabinato.glb"></a-asset-item>
+      <a-asset-item id="beretta-glb" src="beretta.glb"></a-asset-item>
+    </a-assets>
+
+    <!-- Rig Giocatore con ancoraggio al pavimento (Y=0) -->
+    <a-entity id="rig" position="0 0 0">
+      <a-camera id="main-camera" position="0 1.6 0" look-controls>
+        <!-- Raycaster di backup per puntamento via Sguardo / Mouse -->
+        <a-cursor raycaster="objects: .clickable" color="#00ffcc" scale="0.5 0.5 0.5"></a-cursor>
+      </a-camera>
+
+      <!-- Controller Sinistro (Interazione HUD) -->
+      <a-entity id="left-controller" laser-controls="hand: left" raycaster="objects: .clickable; far: 5"></a-entity>
+
+      <!-- Controller Destro (Arma + Raggio Laser) -->
+      <a-entity id="right-controller" laser-controls="hand: right" raycaster="objects: .clickable, .target; far: 10; showLine: true" line="color: #ff0000; opacity: 0.85">
+        <!-- Pivot per l'Allineamento dell'Arma e del Raggio -->
+        <a-entity id="gun-alignment-pivot" position="0 0 0" rotation="0 0 0">
+          <!-- Modello Beretta agganciato al controller -->
+          <a-entity id="beretta-model" 
+                    gltf-model="#beretta-glb" 
+                    position="0 -0.03 -0.05" 
+                    rotation="-10 0 0" 
+                    scale="1 1 1">
+          </a-entity>
         </a-entity>
+      </a-entity>
+    </a-entity>
 
-        <!-- Illuminazione -->
-        <a-light type="ambient" color="#404050" intensity="0.8"></a-light>
-        <a-light type="directional" position="0 4 2" intensity="0.6" color="#ffccaa"></a-light>
+    <!-- 3D HUD (Debug, Telemetria e Calibrazione Mirino - Posizionato a Sinistra) -->
+    <a-entity id="hud-debug-panel" position="-1.4 1.3 -1.1" rotation="0 35 0">
+      <!-- Sfondo Pannello HUD -->
+      <a-plane width="1.2" height="1.5" color="#0f172a" material="opacity: 0.9; transparent: true; shader: flat" border="color: #38bdf8"></a-plane>
+      
+      <!-- Intestazione HUD -->
+      <a-text value="CONTROLLO CABINATO" position="-0.52 0.6 0.01" scale="0.35 0.35 0.35" color="#38bdf8" font="monoid"></a-text>
+      <a-text value="VER: v0.2.0" position="-0.52 0.5 0.01" scale="0.25 0.25 0.25" color="#94a3b8"></a-text>
+
+      <!-- Telemetria Stato -->
+      <a-text id="hud-telemetry" value="Sessione: Standby\nModo: Desktop 2D\nFloor Sync: local-floor (Y=0)" position="-0.52 0.25 0.01" scale="0.2 0.2 0.2" color="#ffffff"></a-text>
+
+      <!-- SEZIONE CALIBRAZIONE RAGGIO / MIRINO -->
+      <a-text value="REGOLAZIONE MIRINO (PITCH):" position="-0.52 -0.02 0.01" scale="0.2 0.2 0.2" color="#f59e0b"></a-text>
+      <a-text id="hud-pitch-value" value="Inclinazione: 0.0°" position="-0.52 -0.1 0.01" scale="0.25 0.25 0.25" color="#00ffcc"></a-text>
+
+      <!-- Pulsante Pitch SU (+) -->
+      <a-box id="btn-pitch-up" class="clickable" position="-0.28 -0.26 0.03" width="0.4" height="0.12" depth="0.02" color="#2563eb">
+        <a-text value="INCLINA +" align="center" position="0 0 0.02" scale="0.2 0.2 0.2" color="#ffffff"></a-text>
+      </a-box>
+
+      <!-- Pulsante Pitch GIÙ (-) -->
+      <a-box id="btn-pitch-down" class="clickable" position="0.2 -0.26 0.03" width="0.4" height="0.12" depth="0.02" color="#2563eb">
+        <a-text value="INCLINA -" align="center" position="0 0 0.02" scale="0.2 0.2 0.2" color="#ffffff"></a-text>
+      </a-box>
+
+      <!-- Pulsante Reset Mirino -->
+      <a-box id="btn-pitch-reset" class="clickable" position="-0.04 -0.42 0.03" width="0.88" height="0.1" depth="0.02" color="#475569">
+        <a-text value="RESET MIRINO (0°)" align="center" position="0 0 0.02" scale="0.18 0.18 0.18" color="#ffffff"></a-text>
+      </a-box>
+
+      <!-- Pulsante Toggle Griglia Pavimento -->
+      <a-box id="btn-hud-toggle" class="clickable" position="-0.04 -0.58 0.03" width="0.88" height="0.1" depth="0.02" color="#0d9488">
+        <a-text value="TOGGLE GRIGLIA PAVIMENTO" align="center" position="0 0 0.02" scale="0.17 0.17 0.17" color="#ffffff"></a-text>
+      </a-box>
+    </a-entity>
+
+    <!-- ZONA DI GIOCO CENTRALE (Dinanzi al giocatore) -->
+    <a-entity id="gameplay-zone" position="0 0 -1.8">
+      <!-- Riferimento Visivo Terreno Y=0 -->
+      <a-grid id="floor-grid" position="0 0 1.8" width="8" height="8" color-center="#38bdf8" color-grid="#1e293b"></a-grid>
+      
+      <!-- CABINATO ARCADE ELETTROMECCANICO (Modello GLB) -->
+      <a-entity id="arcade-cabinet" 
+                gltf-model="#cabinato-glb" 
+                position="0 0 0" 
+                rotation="0 0 0" 
+                scale="1 1 1"
+                class="target">
+      </a-entity>
+    </a-entity>
+
+    <!-- Illuminazione Scena -->
+    <a-light type="ambient" color="#ffffff" intensity="0.8"></a-light>
+    <a-light type="directional" position="2 4 2" intensity="0.6" cast-shadow="true"></a-light>
+    <a-light type="point" position="0 1.5 -1" color="#ff4444" intensity="0.5"></a-light> <!-- Luce d'atmosfera vintage sul cabinato -->
+
+  </a-scene>
+
+  <!-- Logica di Gioco e Gestione WebXR -->
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const GAME_VERSION = "0.2.0";
+      const sceneEl = document.querySelector("a-scene");
+      const btnVR = document.getElementById("btn-enter-vr");
+      const btnAR = document.getElementById("btn-enter-ar");
+      const hudTelemetry = document.getElementById("hud-telemetry");
+      const floorGrid = document.getElementById("floor-grid");
+      const btnHudToggle = document.getElementById("btn-hud-toggle");
+
+      // Elementi Calibrazione Mirino
+      const gunPivot = document.getElementById("gun-alignment-pivot");
+      const rightController = document.getElementById("right-controller");
+      const hudPitchValue = document.getElementById("hud-pitch-value");
+      const btnPitchUp = document.getElementById("btn-pitch-up");
+      const btnPitchDown = document.getElementById("btn-pitch-down");
+      const btnPitchReset = document.getElementById("btn-pitch-reset");
+
+      let currentPitch = 0.0; // Inclinazione raggio/pistola in gradi
+
+      // Funzione per aggiornare l'inclinazione del raggio/pistola
+      function updateGunPitch(deltaDegrees) {
+        currentPitch += deltaDegrees;
+        // Limita il pitch tra -45° e +45°
+        currentPitch = Math.max(-45, Math.min(45, currentPitch));
         
-        <!-- Skybox: Viene disattivata automaticamente in AR per evitare lo schermo nero -->
-        <a-sky id="scene-sky" color="#0c0c10"></a-sky>
-
-        <!-- MODELLO DEL CABINATO -->
-        <a-entity id="cabinato" gltf-model="#cabinato-model" position="0 0 -3" scale="1 1 1"></a-entity>
-
-        <!-- HUD SPATIALE (Posizionato sulla sinistra) -->
-        <a-entity id="hud-panel" position="-1.8 1.5 -1.5" rotation="0 35 0">
-            <a-plane width="1.3" height="1.6" color="#161b22" opacity="0.9" material="shader: flat; transparent: true"></a-plane>
-            
-            <a-text value="CALIBRAZIONE ARMI" position="-0.55 0.65 0.01" width="1.8" color="#ff3366"></a-text>
-            <a-text id="hud-status" value="STATO: PRONTO" position="-0.55 0.4 0.01" width="1.6" color="#ffffff"></a-text>
-            <a-text id="hud-tilt" value="INCLINAZIONE X: 0°" position="-0.55 0.2 0.01" width="1.5" color="#00ffcc"></a-text>
-            <a-text value="Versione: v1.5.0" position="-0.55 0 0.01" width="1.4" color="#888888"></a-text>
-
-            <a-box id="btn-tilt-up" class="clickable" position="-0.3 -0.2 0.02" width="0.4" height="0.2" depth="0.05" color="#333344">
-                <a-text value="TILT +" position="-0.15 0 0.03" width="1.2" color="#ffffff"></a-text>
-            </a-box>
-            <a-box id="btn-tilt-down" class="clickable" position="0.3 -0.2 0.02" width="0.4" height="0.2" depth="0.05" color="#333344">
-                <a-text value="TILT -" position="-0.15 0 0.03" width="1.2" color="#ffffff"></a-text>
-            </a-box>
-
-            <a-box id="action-btn" class="clickable" position="0 -0.55 0.02" width="1.0" height="0.25" depth="0.05" color="#ff3366">
-                <a-text id="action-btn-text" value="AVVIA GIOCO" position="-0.35 0 0.04" width="1.8" color="#ffffff"></a-text>
-            </a-box>
-        </a-entity>
-
-    </a-scene>
-
-    <!-- Script di Logica, Gestione AR/VR e Calibrazione -->
-    <script>
-        const sceneEl = document.querySelector('a-scene');
-        const btnVr = document.getElementById('btn-vr');
-        const btnAr = document.getElementById('btn-ar');
-        const sceneSky = document.getElementById('scene-sky');
+        // Applica la rotazione al pivot dell'arma e al raycaster del controller
+        gunPivot.setAttribute("rotation", `${currentPitch} 0 0`);
         
-        const hudStatus = document.getElementById('hud-status');
-        const hudTilt = document.getElementById('hud-tilt');
-        const actionBtn = document.getElementById('action-btn');
-        const actionBtnText = document.getElementById('action-btn-text');
-        const btnTiltUp = document.getElementById('btn-tilt-up');
-        const btnTiltDown = document.getElementById('btn-tilt-down');
-        const berettaEntity = document.getElementById('beretta-entity');
+        // Aggiorna l'inclinazione del raycaster A-Frame (direzione raggio)
+        const rad = (currentPitch * Math.PI) / 180;
+        const dirY = Math.sin(-rad);
+        const dirZ = -Math.cos(rad);
+        rightController.setAttribute("raycaster", "direction", `0 ${dirY} ${dirZ}`);
 
-        let isGameStarted = false;
-        let currentTiltX = 0;
+        // Aggiorna la voce sull'HUD
+        hudPitchValue.setAttribute("value", `Inclinazione: ${currentPitch.toFixed(1)}°`);
+      }
 
-        // Gestione pulsanti browser per avvio VR / AR
-        btnVr.addEventListener('click', () => { if (sceneEl.hasLoaded) sceneEl.enterVR(); });
-        btnAr.addEventListener('click', () => { if (sceneEl.hasLoaded) sceneEl.enterAR(); });
+      // Event Listeners Pulsanti HUD Calibrazione
+      btnPitchUp.addEventListener("click", () => updateGunPitch(0.5));
+      btnPitchDown.addEventListener("click", () => updateGunPitch(-0.5));
+      btnPitchReset.addEventListener("click", () => {
+        currentPitch = 0.0;
+        updateGunPitch(0.0);
+      });
 
-        // FIX SCHERMO NERO AR: Nasconde la skybox quando entra in AR e la ripristina all'uscita
-        sceneEl.addEventListener('enter-ar', () => {
-            sceneSky.setAttribute('visible', 'false');
-            console.log("[WebXR] Entrato in AR: Skybox disattivata per il passthrough.");
-        });
+      // Gestione Sessione VR/AR
+      btnVR.addEventListener("click", () => sceneEl.enterVR());
 
-        sceneEl.addEventListener('exit-ar', () => {
-            sceneSky.setAttribute('visible', 'true');
-            console.log("[WebXR] Uscito da AR: Skybox ripristinata.");
-        });
+      btnAR.addEventListener("click", () => {
+        if (sceneEl.is("vr-mode")) sceneEl.exitVR();
+        sceneEl.setAttribute("webxr", "optionalFeatures", "hit-test, dom-overlay, local-floor");
+        sceneEl.enterVR();
+      });
 
-        // Gestione Calibrazione Inclinazione Pistola (Asse X)
-        btnTiltUp.addEventListener('click', () => {
-            currentTiltX += 2;
-            updateBerettaRotation();
-        });
+      sceneEl.addEventListener("enter-vr", () => {
+        const isAR = sceneEl.is("ar-mode");
+        const modeText = isAR ? "Modalità: AR (Passthrough)" : "Modalità: VR Immersiva";
+        hudTelemetry.setAttribute("value", `Sessione: Attiva\n${modeText}\nFloor Sync: local-floor (Y=0)`);
+        if (isAR) floorGrid.setAttribute("visible", "false");
+      });
 
-        btnTiltDown.addEventListener('click', () => {
-            currentTiltX -= 2;
-            updateBerettaRotation();
-        });
+      sceneEl.addEventListener("exit-vr", () => {
+        hudTelemetry.setAttribute("value", "Sessione: Inattiva\nModo: Desktop 2D\nFloor Sync: local-floor (Y=0)");
+        floorGrid.setAttribute("visible", "true");
+      });
 
-        function updateBerettaRotation() {
-            berettaEntity.setAttribute('rotation', `${currentTiltX} 0 0`);
-            hudTilt.setAttribute('value', `INCLINAZIONE X: ${currentTiltX}°`);
-        }
-
-        // Gestione Stato Gioco / Lobby tramite HUD
-        actionBtn.addEventListener('click', () => {
-            isGameStarted = !isGameStarted;
-
-            if (isGameStarted) {
-                hudStatus.setAttribute('value', 'STATO: IN GIOCO');
-                actionBtn.setAttribute('color', '#333333');
-                actionBtnText.setAttribute('value', 'TORNA LOBBY');
-            } else {
-                hudStatus.setAttribute('value', 'STATO: PRONTO');
-                actionBtn.setAttribute('color', '#ff3366');
-                actionBtnText.setAttribute('value', 'AVVIA GIOCO');
-            }
-        });
-    </script>
+      // Toggle visibilità griglia pavimento
+      btnHudToggle.addEventListener("click", () => {
+        const isVisible = floorGrid.getAttribute("visible") !== "false";
+        floorGrid.setAttribute("visible", (!isVisible).toString());
+      });
+    });
+  </script>
 </body>
 </html>
